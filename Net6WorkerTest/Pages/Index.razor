@@ -1,9 +1,18 @@
-﻿@page "/"
+﻿@using WebWorkerParent;
+@inject IJSRuntime JSRuntime;
+@inject HttpClient Http;
+
+@page "/"
 
 <PageTitle>Index</PageTitle>
 
 <h1>Hello, world!</h1>
 
-Welcome to your new app.
-
-<SurveyPrompt Title="How is Blazor working for you?" />
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        WorkerService service = await WorkerService.CreateInstance(Http, JSRuntime);
+        var worker = service.CreateWorker();
+        await worker.Start();
+    }
+}
