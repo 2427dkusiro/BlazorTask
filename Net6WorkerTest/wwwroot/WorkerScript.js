@@ -150,8 +150,8 @@ async function PreRun() {
  * */
 function PostRun() {
     MONO.mono_wasm_setenv("MONO_URI_DOTNETRELATIVEORABSOLUTE", "true");
-    const load_runtime = Module.cwrap('mono_wasm_load_runtime', null, ['string', 'number']);
-    load_runtime(appBinDirName, 0);
+    // const load_runtime = Module.cwrap('mono_wasm_load_runtime', null, ['string', 'number']);
+    mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessageingService();
     postMessage("__init");
