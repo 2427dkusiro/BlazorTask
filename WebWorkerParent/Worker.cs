@@ -49,5 +49,15 @@ namespace WebWorkerParent
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// デバッグ用仮実装。
+        /// このメソッドのシグネチャは大きく変更される可能性があります。
+        /// </summary>
+        /// <returns></returns>
+        public async Task _Call(string name)
+        {
+            await jSModule.InvokeVoidAsync("_Call", workerId, "[SampleWorkerAssembly]SampleWorkerAssembly.Hoge:" + name);
+        }
     }
 }
