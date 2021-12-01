@@ -173,11 +173,11 @@ function InitializeMessageingService() {
  * @returns {void}
  */
 function OnMessageReceived(message) {
-    if (message.data.endsWith("Hoge")) {
+    if (message.data.endsWith("Fuga")) {
         Module.mono_call_static_method(message.data, []);
     }
-    if (message.data.endsWith("Fuga")) {
-        Module.mono_call_static_method(message.data, [128]);
+    if (message.data.endsWith("Piyo")) {
+        Module.mono_call_static_method(message.data, ["argument from js"]);
     }
 }
 

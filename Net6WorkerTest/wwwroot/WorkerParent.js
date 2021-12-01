@@ -66,6 +66,6 @@ function OnMessage(id, event) {
  * @param {string} method method(full name) to call.
  * @returns {void}
  */
-export function Call(id, method) {
+export function _Call(id, method) {
     workers[id].postMessage(method);
 }
