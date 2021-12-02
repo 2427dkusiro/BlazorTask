@@ -1,31 +1,35 @@
 ﻿namespace WebWorkerParent
 {
     // 修正時、JS型定義も修正すること。
-    public class WorkerInitOption
+    public record WorkerInitOption
     {
-        public static WorkerInitOption Default
+        public WorkerInitOption(string? basePath, string? frameworkDirName, string? appBinDirName, string? dotnetJsName, string? dotnetWasmName, string[]? assemblies)
         {
-            get => new WorkerInitOption()
-            {
-                BasePath = ".",
-                FrameworkDirName = "_framework",
-                AppBinDirName = "appBinDir",
-                DotnetJsName = "dotnet.6.0.0.tj42mwroj7.js",
-                DotnetWasmName = "dotnet.wasm",
-            };
+            BasePath = basePath;
+            FrameworkDirName = frameworkDirName;
+            AppBinDirName = appBinDirName;
+            DotnetJsName = dotnetJsName;
+            DotnetWasmName = dotnetWasmName;
+            Assemblies = assemblies;
         }
 
-        public string? BasePath { get; set; }
+        private static WorkerInitOption? defaultInstance;
+        public static WorkerInitOption Default
+        {
+            get => defaultInstance ??= new(".", "_framework", "appBinDir", null, "dotnet.wasm", null);
+        }
 
-        public string? FrameworkDirName { get; set; }
+        public string? BasePath { get; init; }
 
-        public string? AppBinDirName { get; set; }
+        public string? FrameworkDirName { get; init; }
 
-        public string? DotnetJsName { get; set; }
+        public string? AppBinDirName { get; init; }
 
-        public string? DotnetWasmName { get; set; }
+        public string? DotnetJsName { get; init; }
 
-        public List<string> Assemblies { get; } = new();
+        public string? DotnetWasmName { get; init; }
+
+        public string[]? Assemblies { get; init; }
     }
 }
 

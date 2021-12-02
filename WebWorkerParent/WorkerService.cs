@@ -1,20 +1,21 @@
-﻿using System.Text.Json;
+﻿using Microsoft.JSInterop;
+using Microsoft.JSInterop.WebAssembly;
 
-using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace WebWorkerParent
 {
-    // DI用 軽量な(あまり中身のない)worker作成用クラス。
+    // DI用Worker作成用クラス。
     public class WorkerService
     {
         private readonly HttpClient httpClient;
-        private readonly IJSRuntime jSRuntime;
+        private readonly WebAssemblyJSRuntime jSRuntime;
 
-        private IJSObjectReference jSModule;
+        private IJSUnmarshalledObjectReference? jSModule;
         private readonly string jsPath;
         private readonly string defaultJSPath = "./WorkerParent.js";
 
-        protected WorkerService(HttpClient httpClient, IJSRuntime jSRuntime, string? jsPath = null)
+        protected WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string? jsPath = null)
         {
             this.httpClient = httpClient;
             this.jSRuntime = jSRuntime;
@@ -23,12 +24,13 @@ namespace WebWorkerParent
 
         protected async Task InitializeAsync()
         {
-            jSModule = await jSRuntime.InvokeAsync<IJSObjectReference>("import", jsPath);
+            jSModule = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", jsPath);
             var config = JSEnviromentSettings.Default;
-            await jSModule.InvokeVoidAsync("Configure", JsonSerializer.Serialize(config));
+
+            jSModule.InvokeVoidUnmarshalledJson("Configure", config);
         }
 
-        public static async Task<WorkerService> CreateInstance(HttpClient httpClient, IJSRuntime jSRuntime, string? jsPath = null)
+        public static async Task<WorkerService> CreateInstance(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string? jsPath = null)
         {
             var instance = new WorkerService(httpClient, jSRuntime);
             await instance.InitializeAsync();
@@ -37,9 +39,13 @@ namespace WebWorkerParent
 
         public Worker CreateWorker()
         {
+            if (jSModule is null)
+            {
+                throw new InvalidOperationException($"Service was not initialized. You have to call '{nameof(InitializeAsync)}' first.");
+            }
+
             var worker = new Worker(httpClient, jSRuntime, jSModule);
             return worker;
         }
     }
 }
-

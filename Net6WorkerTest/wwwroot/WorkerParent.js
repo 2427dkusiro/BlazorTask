@@ -1,4 +1,5 @@
 ﻿// @ts-check
+import JSTextDecoder from "./TextDecoder.js";
 
 /**
  * @typedef EnvironmentSettings
@@ -15,12 +16,13 @@ const workers = [];
 
 /**
  * Configure this script.
- * @param {string} json json encoded settings.
+ * @param {number} ptr
+ * @param {number} len
  * @returns {void}
  */
-export function Configure(json) {
+export function Configure(ptr, len) {
     /** @type EnvironmentSettings */
-    const data = JSON.parse(json);
+    const data = DecodeUTF8JSON(ptr, len);
     workerScriptUrl = data.WorkerScriptUrl;
     dotnetAssemblyName = data.AssemblyName;
     dotnetMessageEventHandler = data.MessageHandlerName;
@@ -37,14 +39,18 @@ let dotnetMessageEventHandler;
 
 /**
  * Create a new worker then init worker.
- * @param {string} option json serialized init options.
+ * @param {number} ptr pointer to utf-8 string which is json serialized init options.
+ * @param {number} len length of json data in bytes.
  * @returns {number} unique worker id.
  */
-export function CreateWorker(option) {
+export function CreateWorker(ptr, len) {
     const index = workers.length;
     const worker = new Worker(workerScriptUrl);
-    worker.onmessage = (message) => { OnMessage(index, message); };
-    worker.postMessage(option);
+    worker.onmessage = (message) => OnMessage(index, message);
+
+    const array = new Uint8Array(wasmMemory.buffer, ptr, len);
+    const array2 = new Uint8Array(array);
+    worker.postMessage([array2.buffer], [array2.buffer]);
     workers.push(worker);
     return index;
 }
@@ -58,6 +64,23 @@ export function CreateWorker(option) {
  */
 function OnMessage(id, event) {
     DotNet.invokeMethod(dotnetAssemblyName, dotnetMessageEventHandler, id, event.data);
+}
+
+
+const dotnetArrayOffset = 16; // offset of dotnet array from reference to binary data in bytes.
+const nativeLen = 512; // threathold of using native text decoder(for short string, using js-implemented decoder is faster.)
+const nativeDecoder = new TextDecoder();
+
+/**
+ * Parse Json encorded as UTF-8 Text
+ * @param {number} ptr pointer to utf-8 string which is json serialized init options.
+ * @param {number} len length of json data in bytes.
+ * @returns {any}
+ */
+function DecodeUTF8JSON(ptr, len) {
+    const array = new Uint8Array(wasmMemory.buffer, ptr, len);
+    const str = len > nativeLen ? nativeDecoder.decode(array) : JSTextDecoder(array);
+    return JSON.parse(str);
 }
 
 /**

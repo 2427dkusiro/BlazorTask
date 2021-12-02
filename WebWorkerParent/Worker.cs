@@ -1,4 +1,7 @@
 ﻿using Microsoft.JSInterop;
+using Microsoft.JSInterop.WebAssembly;
+
+using System.Text.Json;
 
 namespace WebWorkerParent
 {
@@ -8,12 +11,12 @@ namespace WebWorkerParent
     public class Worker
     {
         private readonly HttpClient httpClient;
-        private readonly IJSRuntime jSRuntime;
-        private readonly IJSObjectReference jSModule;
+        private readonly WebAssemblyJSRuntime jSRuntime;
+        private readonly IJSUnmarshalledObjectReference jSModule;
 
         private readonly string bootJsonPath = "./_framework/blazor.boot.json";
 
-        public Worker(HttpClient httpClient, IJSRuntime jSRuntime, IJSObjectReference jSModule)
+        public Worker(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference jSModule)
         {
             this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
@@ -22,27 +25,27 @@ namespace WebWorkerParent
 
         private int workerId = -1;
 
-        public async Task Start()
+        public async ValueTask Start()
         {
-            WorkerInitOption workerInitOption = WorkerInitOption.Default;
             var asm = await Utility.AssemblyResolver.GetAssembliesFromBootJson(httpClient, bootJsonPath);
-            workerInitOption.Assemblies.AddRange(asm);
+            var dotnetJS = await Utility.AssemblyResolver.GetDotnetJSFromBootJson(httpClient, bootJsonPath);
+            var workerInitOption = WorkerInitOption.Default with { DotnetJsName = dotnetJS, Assemblies = asm };
 
-            await Start(workerInitOption);
+            workerId = StartInternal(workerInitOption);
         }
 
-        public async Task Start(WorkerInitOption workerInitOption)
+        public async ValueTask Start(WorkerInitOption workerInitOption)
         {
-            workerId = await StartInternal(workerInitOption);
+            workerId = StartInternal(workerInitOption);
         }
 
-        private async Task<int> StartInternal(WorkerInitOption workerInitOption)
+        private int StartInternal(WorkerInitOption workerInitOption)
         {
             if (workerId >= 0)
             {
                 throw new InvalidOperationException("既にワーカーは起動しています。");
             }
-            return await WorkerBuilder.CreateNew(jSModule, workerInitOption);
+            return jSModule.InvokeUnmarshalledJson<int, WorkerInitOption>("CreateWorker", workerInitOption);
         }
 
         public Task Terminate()
