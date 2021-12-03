@@ -6,6 +6,7 @@ import JSTextDecoder from "./TextDecoder.js";
  * @property {string} WorkerScriptUrl
  * @property {string} AssemblyName
  * @property {string} MessageHandlerName
+ * @property {string} InitializedHandlerName
  * */
 
 /**
@@ -26,6 +27,7 @@ export function Configure(ptr, len) {
     workerScriptUrl = data.WorkerScriptUrl;
     dotnetAssemblyName = data.AssemblyName;
     dotnetMessageEventHandler = data.MessageHandlerName;
+    dotnetInitializedHandler = data.InitializedHandlerName;
 }
 
 /** @type {string} */
@@ -36,6 +38,9 @@ let dotnetAssemblyName;
 
 /** @type {string} */
 let dotnetMessageEventHandler;
+
+/** @type {string} */
+let dotnetInitializedHandler;
 
 /**
  * Create a new worker then init worker.
@@ -63,6 +68,13 @@ export function CreateWorker(ptr, len) {
  * @returns {void}
  */
 function OnMessage(id, event) {
+    if (event.data.startsWith("_")) {
+        switch (event.data) {
+            case "_init":
+                DotNet.invokeMethod(dotnetAssemblyName, dotnetInitializedHandler, id);
+                break;
+        }
+    }
     DotNet.invokeMethod(dotnetAssemblyName, dotnetMessageEventHandler, id, event.data);
 }
 

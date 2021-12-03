@@ -1,6 +1,4 @@
-﻿using Microsoft.JSInterop;
-
-namespace WebWorkerParent
+﻿namespace WebWorkerParent
 {
     public static class JSHelper
     {

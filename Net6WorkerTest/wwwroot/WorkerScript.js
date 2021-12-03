@@ -142,7 +142,7 @@ function PostRun() {
     _mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
-    postMessage("__init");
+    postMessage("_init");
 }
 
 /**

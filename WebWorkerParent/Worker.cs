@@ -1,7 +1,7 @@
-﻿using Microsoft.JSInterop;
-using Microsoft.JSInterop.WebAssembly;
+﻿using Microsoft.JSInterop.WebAssembly;
 
-using System.Text.Json;
+using WebWorkerParent.Tasks;
+using WebWorkerParent.Utility;
 
 namespace WebWorkerParent
 {
@@ -10,42 +10,41 @@ namespace WebWorkerParent
     /// </summary>
     public class Worker
     {
-        private readonly HttpClient httpClient;
+        private readonly IResourceResolver resourceResolver;
         private readonly WebAssemblyJSRuntime jSRuntime;
         private readonly IJSUnmarshalledObjectReference jSModule;
 
-        private readonly string bootJsonPath = "./_framework/blazor.boot.json";
-
-        public Worker(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference jSModule)
+        public Worker(IResourceResolver resourceResolver, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference jSModule)
         {
-            this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            this.resourceResolver = resourceResolver ?? throw new ArgumentNullException(nameof(resourceResolver));
             this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
             this.jSModule = jSModule ?? throw new ArgumentNullException(nameof(jSModule));
         }
 
         private int workerId = -1;
 
-        public async ValueTask Start()
+        public WorkerTask Start()
         {
-            var asm = await Utility.AssemblyResolver.GetAssembliesFromBootJson(httpClient, bootJsonPath);
-            var dotnetJS = await Utility.AssemblyResolver.GetDotnetJSFromBootJson(httpClient, bootJsonPath);
-            var workerInitOption = WorkerInitOption.Default with { DotnetJsName = dotnetJS, Assemblies = asm };
+            var asm = resourceResolver.ResolveAssemblies();
+            var dotnetJS = resourceResolver.ResolveDotnetJS();
+            var workerInitOption = WorkerInitializeSetting.Default with { DotnetJsName = dotnetJS, Assemblies = asm.ToArray() };
 
-            workerId = StartInternal(workerInitOption);
+            return StartInternal(workerInitOption);
         }
 
-        public async ValueTask Start(WorkerInitOption workerInitOption)
+        public WorkerTask Start(WorkerInitializeSetting workerInitOption)
         {
-            workerId = StartInternal(workerInitOption);
+            return StartInternal(workerInitOption);
         }
 
-        private int StartInternal(WorkerInitOption workerInitOption)
+        private StartWorkerTask StartInternal(WorkerInitializeSetting workerInitOption)
         {
             if (workerId >= 0)
             {
                 throw new InvalidOperationException("既にワーカーは起動しています。");
             }
-            return jSModule.InvokeUnmarshalledJson<int, WorkerInitOption>("CreateWorker", workerInitOption);
+            StartWorkerTask task = new StartWorkerTask(jSRuntime, jSModule, workerInitOption, id => workerId = id);
+            return task;
         }
 
         public Task Terminate()
