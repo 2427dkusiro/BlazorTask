@@ -22,7 +22,8 @@
     protected async Task OnBootClick()
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        WorkerService service = await WorkerService.CreateInstanceAsync(Http, JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException());
+        var runtime = JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException();
+        WorkerService service = await WorkerService.CreateInstanceAsync(Http, runtime);
         this.worker = service.CreateWorker();
         await worker.Start();
         watch.Stop();

@@ -15,6 +15,9 @@ let dotnetJsName;
 /** @type string */
 let dotnetWasmName;
 
+/** @type string */
+let brDecoderPath;
+
 /** @type string[] */
 let dotnetAssemblies;
 
@@ -34,13 +37,14 @@ function Initialize(eventArg) {
     const str = array.length > nativeLen ? nativeDecoder.decode(array) : JSDecoder.Decode(array);
 
     /**@type WorkerInitializeSetting */
-    const option = JSON.parse(str);
-    basePath = option.BasePath;
-    frameworkDirName = option.FrameworkDirName;
-    appBinDirName = option.AppBinDirName;
-    dotnetJsName = option.DotnetJsName;
-    dotnetWasmName = option.DotnetWasmName;
-    dotnetAssemblies = option.Assemblies;
+    const setting = JSON.parse(str);
+    basePath = setting.BasePath;
+    frameworkDirName = setting.FrameworkDirName;
+    appBinDirName = setting.AppBinDirName;
+    dotnetJsName = setting.DotnetJsName;
+    dotnetWasmName = setting.DotnetWasmName;
+    brDecoderPath = setting.BrotliDecoderPath;
+    dotnetAssemblies = setting.Assemblies;
 
     /** @type ModuleType */
     const _Module = {};
@@ -56,7 +60,17 @@ function Initialize(eventArg) {
     global = globalThis;
     self.Module = _Module;
 
-    self.importScripts(BuildPath(dotnetJsName));
+    self.importScripts(BuildFrameworkPath(dotnetJsName));
+}
+
+/**
+ * Builds path to fetch.
+ * @private
+ * @param {string} name fileName which you want to fetch.
+ * @returns {string} relative path to file.
+ */
+function BuildFrameworkPath(name) {
+    return basePath + "/" + frameworkDirName + "/" + name;
 }
 
 /**
@@ -66,7 +80,7 @@ function Initialize(eventArg) {
  * @returns {string} relative path to file.
  */
 function BuildPath(name) {
-    return basePath + "/" + frameworkDirName + "/" + name;
+    return basePath + "/" + name;
 }
 
 /**
@@ -97,7 +111,7 @@ function WriteStdError(message) {
  */
 function LocateFile(fileName) {
     if (fileName == "dotnet.wasm") {
-        return BuildPath(dotnetWasmName);
+        return BuildFrameworkPath(dotnetWasmName);
     }
     return fileName;
 }
@@ -110,14 +124,28 @@ function LocateFile(fileName) {
 async function PreRun() {
     const mono_wasm_add_assembly = Module.cwrap('mono_wasm_add_assembly', null, ['string', 'number', 'number',]);
     MONO.loaded_files = [];
+    let decodeModule;
+    if (brDecoderPath != null) {
+        decodeModule = await import(BuildPath(brDecoderPath));
+    }
 
     dotnetAssemblies.forEach(async (fileName) => {
         const runDependencyId = `blazor:${fileName}`;
         addRunDependency(runDependencyId);
-        const result = await fetch(BuildPath(fileName));
+        let result;
+        if (brDecoderPath != null) {
+            result = await fetch(BuildFrameworkPath(fileName) + ".br");
+        } else {
+            result = await fetch(BuildFrameworkPath(fileName));
+        }
         if (result.ok) {
             const arrayBuffer = await result.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
+            let data;
+            if (brDecoderPath != null) {
+                data = decodeModule.BrotliDecode(new Int8Array(arrayBuffer));
+            } else {
+                data = new Uint8Array(arrayBuffer);
+            }
 
             const heapAddress = Module._malloc(data.length);
             const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, data.length);
@@ -186,6 +214,7 @@ function _postMessage(message) {
  * @property {string} AppBinDirName
  * @property {string} DotnetJsName
  * @property {string} DotnetWasmName
+ * @property {string} BrotliDecoderPath;
  * @property {string[]} Assemblies
  * */
 

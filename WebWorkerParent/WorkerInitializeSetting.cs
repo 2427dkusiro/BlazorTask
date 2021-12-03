@@ -14,7 +14,7 @@
         /// <param name="dotnetJsName"></param>
         /// <param name="dotnetWasmName"></param>
         /// <param name="assemblies"></param>
-        public WorkerInitializeSetting(string? basePath, string? frameworkDirName, string? appBinDirName, string? dotnetJsName, string? dotnetWasmName, string[]? assemblies)
+        public WorkerInitializeSetting(string? basePath, string? frameworkDirName, string? appBinDirName, string? dotnetJsName, string? dotnetWasmName, string? decoderPath, string[]? assemblies)
         {
             BasePath = basePath;
             FrameworkDirName = frameworkDirName;
@@ -31,7 +31,7 @@
         /// </summary>
         public static WorkerInitializeSetting Default
         {
-            get => defaultInstance ??= new("../..", "_framework", "appBinDir", null, "dotnet.wasm", null);
+            get => defaultInstance ??= new("../..", "_framework", "appBinDir", null, "dotnet.wasm", null, null);
         }
 
         public string? BasePath { get; init; }
@@ -43,6 +43,8 @@
         public string? DotnetJsName { get; init; }
 
         public string? DotnetWasmName { get; init; }
+
+        public string? BrotliDecoderPath { get; set; }
 
         public string[]? Assemblies { get; init; }
     }

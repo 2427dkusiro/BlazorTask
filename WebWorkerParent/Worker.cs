@@ -14,6 +14,9 @@ namespace WebWorkerParent
         private readonly WebAssemblyJSRuntime jSRuntime;
         private readonly IJSUnmarshalledObjectReference jSModule;
 
+        // TODO:外挿させる
+        private readonly string decoderPath = "decode.min.js";
+
         public Worker(IResourceResolver resourceResolver, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference jSModule)
         {
             this.resourceResolver = resourceResolver ?? throw new ArgumentNullException(nameof(resourceResolver));
@@ -27,7 +30,7 @@ namespace WebWorkerParent
         {
             var asm = resourceResolver.ResolveAssemblies();
             var dotnetJS = resourceResolver.ResolveDotnetJS();
-            var workerInitOption = WorkerInitializeSetting.Default with { DotnetJsName = dotnetJS, Assemblies = asm.ToArray() };
+            var workerInitOption = WorkerInitializeSetting.Default with { DotnetJsName = dotnetJS, Assemblies = asm.ToArray(), BrotliDecoderPath = decoderPath };
 
             return StartInternal(workerInitOption);
         }

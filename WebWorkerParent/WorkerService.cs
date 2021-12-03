@@ -43,10 +43,10 @@ namespace WebWorkerParent
         /// <param name="httpClient">available <see cref="HttpClient"></see> instance.</param>
         /// <param name="jSRuntime">available <see cref="WebAssemblyJSRuntime"/> instance.</param>
         /// <returns></returns>
-        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IResourceResolver? resolver = null)
+        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime)
         {
             var instance = new WorkerService(httpClient, jSRuntime);
-            await instance.InitializeAsync(Settings.WorkerParentScriptPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
+            await instance.InitializeAsync(Settings.WorkerParentScriptPath, await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
             return instance;
         }
 
@@ -60,7 +60,7 @@ namespace WebWorkerParent
         /// <param name="jSRuntime">available <see cref="WebAssemblyJSRuntime"/> instance.</param>
         /// <param name="jsPath">custom path to worker parent js module.</param>
         /// <returns></returns>
-        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string jsPath, IResourceResolver? resolver = null)
+        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string jsPath, IResourceResolver resolver)
         {
             var instance = new WorkerService(httpClient, jSRuntime);
             await instance.InitializeAsync(jsPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
