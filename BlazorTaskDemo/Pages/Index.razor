@@ -1,0 +1,37 @@
+﻿@using WebWorkerParent;
+@inject IJSRuntime JSRuntime;
+@inject HttpClient Http;
+
+@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+<h3>ワーカー起動</h3>
+<button class="btn btn-primary" @onclick="OnBootClick">起動</button>
+<span>@bootTime</span>
+
+<h3>メソッド呼び出し</h3>
+<button class="btn btn-primary" @onclick="OnRunClicked">実行</button>
+
+@code {
+    private Worker worker;
+    private string bootTime = "";
+
+    protected async Task OnBootClick()
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        WorkerService service = await WorkerService.CreateInstanceAsync(Http, JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException());
+        this.worker = service.CreateWorker();
+        await worker.Start();
+        watch.Stop();
+        bootTime = watch.Elapsed.TotalMilliseconds.ToString("F1") + "ms";
+    }
+
+    protected async Task OnRunClicked()
+    {
+        await worker._Call(nameof(SampleWorkerAssembly.Hoge.Fuga));
+        await worker._Call(nameof(SampleWorkerAssembly.Hoge.Piyo));
+    }
+}
