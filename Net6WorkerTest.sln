@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Net6WorkerTest", "Net6Worke
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebWorkerParent", "WebWorkerParent\WebWorkerParent.csproj", "{09B70F6E-4F6E-4CA7-A1A8-68C790349DC6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleWorkerAssembly", "SampleWorkerAssembly\SampleWorkerAssembly.csproj", "{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleWorkerAssembly", "SampleWorkerAssembly\SampleWorkerAssembly.csproj", "{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebResource", "WebResource\WebResource.csproj", "{77C3823B-0DE4-4E00-822E-66C22A343AA9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77C3823B-0DE4-4E00-822E-66C22A343AA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77C3823B-0DE4-4E00-822E-66C22A343AA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77C3823B-0DE4-4E00-822E-66C22A343AA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77C3823B-0DE4-4E00-822E-66C22A343AA9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

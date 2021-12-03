@@ -18,8 +18,6 @@ namespace WebWorkerParent
         protected IJSUnmarshalledObjectReference? jSModule;
         protected IResourceResolver? resourceResolver;
 
-        protected const string defaultJSPath = "./WorkerParent.js";
-        protected const string bootJsonPath = "./_framework/blazor.boot.json";
 
         protected WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime)
         {
@@ -48,7 +46,7 @@ namespace WebWorkerParent
         public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IResourceResolver? resolver = null)
         {
             var instance = new WorkerService(httpClient, jSRuntime);
-            await instance.InitializeAsync(defaultJSPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, bootJsonPath));
+            await instance.InitializeAsync(Settings.WorkerParentScriptPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
             return instance;
         }
 
@@ -65,7 +63,7 @@ namespace WebWorkerParent
         public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string jsPath, IResourceResolver? resolver = null)
         {
             var instance = new WorkerService(httpClient, jSRuntime);
-            await instance.InitializeAsync(jsPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, bootJsonPath));
+            await instance.InitializeAsync(jsPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
             return instance;
         }
 

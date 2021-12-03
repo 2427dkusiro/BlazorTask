@@ -15,7 +15,7 @@ namespace WebWorkerParent
         private static JSEnvironmentSetting CreateDefault()
         {
             var asmName = Assembly.GetExecutingAssembly().GetName().Name ?? throw new InvalidOperationException("failed to get executing assembly name.");
-            return new JSEnvironmentSetting("WorkerScript.js", asmName, nameof(Messaging.MessageReceiver.ReceiveMessageFromJS), nameof(Messaging.MessageReceiver.NotifyWorkerInitialized));
+            return new JSEnvironmentSetting(Settings.WorkerScriptPath, asmName, nameof(Messaging.MessageReceiver.ReceiveMessageFromJS), nameof(Messaging.MessageReceiver.NotifyWorkerInitialized));
         }
 
         /// <summary>

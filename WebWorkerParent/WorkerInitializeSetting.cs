@@ -31,7 +31,7 @@
         /// </summary>
         public static WorkerInitializeSetting Default
         {
-            get => defaultInstance ??= new(".", "_framework", "appBinDir", null, "dotnet.wasm", null);
+            get => defaultInstance ??= new("../..", "_framework", "appBinDir", null, "dotnet.wasm", null);
         }
 
         public string? BasePath { get; init; }

@@ -33,7 +33,7 @@ function Initialize(eventArg) {
     const array = new Uint8Array(eventArg.data[0], 0);
     const str = array.length > nativeLen ? nativeDecoder.decode(array) : JSDecoder.Decode(array);
 
-    /**@type WorkerInitOption */
+    /**@type WorkerInitializeSetting */
     const option = JSON.parse(str);
     basePath = option.BasePath;
     frameworkDirName = option.FrameworkDirName;
@@ -76,7 +76,7 @@ function BuildPath(name) {
  * @returns {void}
  */
 function WriteStdOut(message) {
-    console.log("worker-stdout:" + message);
+    console.log("workerstdout:" + message);
 }
 
 /**
@@ -180,7 +180,7 @@ function _postMessage(message) {
 // #region typedef
 
 /**
- * @typedef WorkerInitOption
+ * @typedef WorkerInitializeSetting
  * @property {string} BasePath
  * @property {string} FrameworkDirName
  * @property {string} AppBinDirName
