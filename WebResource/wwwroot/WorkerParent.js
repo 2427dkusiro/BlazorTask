@@ -3,7 +3,7 @@ import JSTextDecoder from "./TextDecoder.js";
 
 /**
  * @typedef EnvironmentSettings
- * @property {string} WorkerScriptUrl
+ * @property {string} WorkerScriptPath
  * @property {string} AssemblyName
  * @property {string} MessageHandlerName
  * @property {string} InitializedHandlerName
@@ -24,7 +24,7 @@ const workers = [];
 export function Configure(ptr, len) {
     /** @type EnvironmentSettings */
     const data = DecodeUTF8JSON(ptr, len);
-    workerScriptUrl = data.WorkerScriptUrl;
+    workerScriptUrl = data.WorkerScriptPath
     dotnetAssemblyName = data.AssemblyName;
     dotnetMessageEventHandler = data.MessageHandlerName;
     dotnetInitializedHandler = data.InitializedHandlerName;

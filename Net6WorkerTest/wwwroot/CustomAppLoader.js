@@ -11,7 +11,7 @@ Blazor.start({
             return;
         }
 
-        if (type !== 'dotnetjs' && location.hostname !== 'localhost') {
+        if (type !== 'dotnetjs') {
             return (async function () {
                 const response = await fetch(defaultUri + '.br', { cache: 'no-cache' });
                 if (!response.ok) {

@@ -1,10 +1,11 @@
 ﻿global using Microsoft.JSInterop;
+namespace WebWorkerParent;
 
-internal static class Settings
+internal static class DefaultSettings
 {
-    public static string WorkerScriptPath { get => "./_content/WebResource/WorkerScript.js"; }
+    public static string DefaultWorkerScriptPath { get => "./_content/WebResource/WorkerScript.js"; }
 
-    public static string WorkerParentScriptPath { get => "./_content/WebResource/WorkerParent.js"; }
+    public static string DefaultParentScriptPath { get => "./_content/WebResource/WorkerParent.js"; }
 
-    public static string BootJsonPath { get => "./_framework/blazor.boot.json"; }
+    public static string DefaultBootJsonPath { get => "./_framework/blazor.boot.json"; }
 }
