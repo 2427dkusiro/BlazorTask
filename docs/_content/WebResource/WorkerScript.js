@@ -15,38 +15,77 @@ let dotnetJsName;
 /** @type string */
 let dotnetWasmName;
 
+/** @type string */
+let resourceDecoderPath;
+
+/** @type string */
+let resourceDecodeMathodName;
+
+/** @type string */
+let resourceSuffix;
+
 /** @type string[] */
 let dotnetAssemblies;
 
+/** @type boolean */
+let useCache;
+
+let decoderModule;
+
+let jsTextDecoderModule;
+
 self.onmessage = (/** @type MessageEvent */ eventArg) => {
     self.onmessage = OnMessageReceived;
-    Initialize(eventArg);
+    ConfigureThis(eventArg);
+    ImportModules().then(() => InitializeRuntime());
+}
+
+/**
+ * Configure this object from passed setting info.
+ * @param {MessageEvent} eventArg
+ * @returns {void}
+ */
+function ConfigureThis(eventArg) {
+    const array = new Uint8Array(eventArg.data[0], 0);
+    const str = array.length > nativeLen ? nativeDecoder.decode(array) : jsTextDecoderModule.Decode(array);
+
+    /**@type WorkerInitializeSetting */
+    const setting = JSON.parse(str);
+    basePath = setting.BasePath;
+    frameworkDirName = setting.FrameworkDirName;
+    appBinDirName = setting.AppBinDirName;
+    dotnetJsName = setting.DotnetJsName;
+    dotnetWasmName = setting.DotnetWasmName;
+    resourceDecoderPath = setting.ResourceDecoderPath;
+    resourceDecodeMathodName = setting.ResourceDecodeMathodName;
+    resourceSuffix = setting.ResourcePrefix;
+    useCache = setting.UseResourceCache;
+    dotnetAssemblies = setting.Assemblies;
+}
+
+/**
+ * Import modules here(by dynamic import).
+ * @returns {Promise<void>} 
+ */
+async function ImportModules() {
+    jsTextDecoderModule = await import("./TextDecoder.js");
+    if (resourceDecoderPath != null) {
+        decoderModule = await import(BuildPath(resourceDecoderPath));
+    }
 }
 
 /**
  * Invoke initialize logics. This method should call once.
  * @private
- * @param {MessageEvent} eventArg
  * @returns {void}
  */
-function Initialize(eventArg) {
-    const array = new Uint8Array(eventArg.data[0], 0);
-    const str = array.length > nativeLen ? nativeDecoder.decode(array) : JSDecoder.Decode(array);
-
-    /**@type WorkerInitializeSetting */
-    const option = JSON.parse(str);
-    basePath = option.BasePath;
-    frameworkDirName = option.FrameworkDirName;
-    appBinDirName = option.AppBinDirName;
-    dotnetJsName = option.DotnetJsName;
-    dotnetWasmName = option.DotnetWasmName;
-    dotnetAssemblies = option.Assemblies;
-
+function InitializeRuntime() {
     /** @type ModuleType */
     const _Module = {};
     _Module.print = WriteStdOut;
     _Module.printErr = WriteStdError;
     _Module.locateFile = LocateFile;
+    _Module.instantiateWasm = InstantiateWasm;
     _Module.preRun = [];
     _Module.postRun = [];
     _Module.preloadPlugins = [];
@@ -56,17 +95,7 @@ function Initialize(eventArg) {
     global = globalThis;
     self.Module = _Module;
 
-    self.importScripts(BuildPath(dotnetJsName));
-}
-
-/**
- * Builds path to fetch.
- * @private
- * @param {string} name fileName which you want to fetch.
- * @returns {string} relative path to file.
- */
-function BuildPath(name) {
-    return basePath + "/" + frameworkDirName + "/" + name;
+    self.importScripts(BuildFrameworkPath(dotnetJsName));
 }
 
 /**
@@ -97,9 +126,77 @@ function WriteStdError(message) {
  */
 function LocateFile(fileName) {
     if (fileName == "dotnet.wasm") {
-        return BuildPath(dotnetWasmName);
+        return BuildFrameworkPath(dotnetWasmName);
     }
     return fileName;
+}
+
+/**
+ * see MonoPlatform.ts line:269
+ * @param {WebAssembly.Imports} imports
+ * @param {function(WebAssembly.Instance):void} successCallback
+ */
+function InstantiateWasm(imports, successCallback) {
+    (async () => {
+        /** @type WebAssembly.Instance */
+        let compiledInstance;
+        try {
+            if (!cacheInitializeTryed) {
+                await InitializeCache();
+            }
+            // if cache available or decode required, cannot(or not necessary to) do streaming compile.
+            if (cacheAvailable || resourceDecoderPath != null) {
+                const responce = await FetchResource(dotnetWasmName);
+                compiledInstance = await CompileWasmModuleArrayBuffer(responce.buffer, imports);
+            }
+            else {
+                const dotnetWasmResource = fetch(BuildFrameworkPath(dotnetWasmName));
+                compiledInstance = await CompileWasmModule(dotnetWasmResource, imports);
+            }
+        } catch (ex) {
+            console.error(ex.toString());
+            throw ex;
+        }
+        successCallback(compiledInstance);
+    })();
+    return []; // No exports
+};
+
+/**
+ * See MonoPlatform.ts line:588
+ * @param {Promise<Response>} wasmPromise
+ * @param {WebAssembly.Imports} imports
+ * @returns {Promise<WebAssembly.Instance>}
+ */
+async function CompileWasmModule(wasmPromise, imports) {
+    // This is the same logic as used in emscripten's generated js. We can't use emscripten's js because
+    // it doesn't provide any method for supplying a custom response provider, and we want to integrate
+    // with our resource loader cache.
+
+    if (typeof WebAssembly['instantiateStreaming'] === 'function') {
+        try {
+            const streamingResult = await WebAssembly['instantiateStreaming'](wasmPromise, imports);
+            return streamingResult.instance;
+        }
+        catch (ex) {
+            console.info('Streaming compilation failed. Falling back to ArrayBuffer instantiation. ', ex);
+        }
+    }
+
+    // If that's not available or fails (e.g., due to incorrect content-type header),
+    // fall back to ArrayBuffer instantiation
+    const arrayBuffer = await wasmPromise.then(r => r.arrayBuffer());
+    return await CompileWasmModuleArrayBuffer(arrayBuffer, imports);
+}
+
+/**
+ * See MonoPlatform.ts line:588
+ * @param {ArrayBuffer} arrayBuffer
+ * @param {WebAssembly.Imports} imports
+ * @returns {Promise<WebAssembly.Instance>}
+ */
+async function CompileWasmModuleArrayBuffer(arrayBuffer, imports) {
+    return (await WebAssembly.instantiate(arrayBuffer, imports)).instance;
 }
 
 /**
@@ -113,21 +210,19 @@ async function PreRun() {
 
     dotnetAssemblies.forEach(async (fileName) => {
         const runDependencyId = `blazor:${fileName}`;
-        addRunDependency(runDependencyId);
-        const result = await fetch(BuildPath(fileName));
-        if (result.ok) {
-            const arrayBuffer = await result.arrayBuffer();
-            const data = new Uint8Array(arrayBuffer);
+        addRunDependency(runDependencyId); //necessary for await
 
+        const data = await FetchResource(fileName);
+        if (data == null) {
+            removeRunDependency(runDependencyId);
+            console.error("failed to fetch:" + fileName);
+        } else {
             const heapAddress = Module._malloc(data.length);
             const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, data.length);
             heapMemory.set(data);
             mono_wasm_add_assembly(fileName, heapAddress, data.length);
             MONO.loaded_files.push(fileName);
             removeRunDependency(runDependencyId);
-        } else {
-            removeRunDependency(runDependencyId);
-            console.error("failed to fetch:" + fileName);
         }
     });
 }
@@ -169,15 +264,13 @@ function OnMessageReceived(message) {
     }
 }
 
-
-
 // これデバッグ用なので消えます
 function _postMessage(message) {
     postMessage(message);
 }
 
-
 // #region typedef
+// must sync following typedef to dotnet class
 
 /**
  * @typedef WorkerInitializeSetting
@@ -186,6 +279,10 @@ function _postMessage(message) {
  * @property {string} AppBinDirName
  * @property {string} DotnetJsName
  * @property {string} DotnetWasmName
+ * @property {string} ResourceDecoderPath
+ * @property {string} ResourceDecodeMathodName
+ * @property {string} ResourcePrefix
+ * @property {boolean} UseResourceCache
  * @property {string[]} Assemblies
  * */
 
@@ -194,16 +291,149 @@ function _postMessage(message) {
  * @property {function(string):void} print
  * @property {function(string):void} printErr
  * @property {function(string):string} locateFile
+ * @property {function(WebAssembly.Imports,function(WebAssembly.Instance):void):void} instantiateWasm
  * @property {Array<function():Promise<void> | void>} preRun
  * @property {Array<function():Promise<void> | void>} postRun
  * @property {Array<function():Promise<void> | void>} preloadPlugins
  * */
 
+/**
+ * @typedef LoadingResource
+ * @property {string} name
+ * @property {string} url
+ * @property {Promise<Response>} response
+
 // #endregion
 
 // #region utility
 
-// must sync following to parent
+/**
+ * Builds path to fetch.
+ * @private
+ * @param {string} name fileName which you want to fetch.
+ * @returns {string} relative path to file.
+ */
+function BuildFrameworkPath(name) {
+    return basePath + "/" + frameworkDirName + "/" + name;
+}
+
+/**
+ * Builds path to fetch.
+ * @private
+ * @param {string} name fileName which you want to fetch.
+ * @returns {string} relative path to file.
+ */
+function BuildPath(name) {
+    return basePath + "/" + name;
+}
+
+/** @type Cache */
+let resourceCache;
+
+/** @type readonly Request[] */
+let resourceCacheKeys;
+
+const targetCacheKey = "blazor-resources";
+
+/**
+ * Fetch resource by configured way.
+ * @param {string} fileName
+ * @returns {Promise<Uint8Array | Int8Array>}
+ */
+async function FetchResource(fileName) {
+    if (!cacheInitializeTryed) {
+        await InitializeCache();
+    }
+    if (cacheAvailable) {
+        const cacheResponce = await SearchCache(fileName);
+        if (cacheResponce != null) {
+            return new Uint8Array(await cacheResponce.arrayBuffer());
+        }
+    }
+
+    /** @type Response */
+    let responce;
+
+    /** @type Uint8Array | Int8Array */
+    let data;
+    if (resourceDecoderPath != null) {
+        responce = await fetch(BuildFrameworkPath(fileName) + resourceSuffix);
+    } else {
+        responce = await fetch(BuildFrameworkPath(fileName));
+    }
+    if (responce.ok) {
+        const arrayBuffer = await responce.arrayBuffer();
+
+        if (resourceDecoderPath != null) {
+            return decoderModule[resourceDecodeMathodName](new Int8Array(arrayBuffer));
+        } else {
+            return new Uint8Array(arrayBuffer);
+        }
+    } else {
+        if (resourceDecoderPath != null) {
+            console.warn("failed to fetch encoded resource. Fall back to fetch not encoded.");
+            responce = await fetch(BuildFrameworkPath(fileName));
+            if (responce.ok) {
+                return new Uint8Array(await responce.arrayBuffer());
+            }
+        }
+    }
+    return null;
+}
+
+let cacheAvailable = false;
+let cacheInitializeTryed = false;
+
+/**
+ * Initialize cache system
+ * @returns {Promise<void>}
+ * */
+async function InitializeCache() {
+    cacheInitializeTryed = true;
+
+    if (useCache) {
+        if (resourceCache == null) {
+            const keys = await caches.keys();
+            for (let i = 0; i < keys.length; i++) {
+                if (keys[i].startsWith(targetCacheKey)) {
+                    resourceCache = await caches.open(keys[i]);
+                    break;
+                }
+            }
+            if (resourceCache == null) {
+                return;
+            }
+        }
+        if (resourceCacheKeys == null) {
+            resourceCacheKeys = await resourceCache.keys();
+            if (resourceCacheKeys == null || resourceCacheKeys.length == 0) {
+                cacheAvailable = false;
+                return;
+            } else {
+                cacheAvailable = true;
+                return;
+            }
+        }
+    } else {
+        cacheAvailable = false;
+    }
+}
+
+/**
+ * Search resource from resource cache. If cache is not hit, returns null.
+ * @param {string} fileName filename to serach.
+ * @returns {Promise<Response>}
+ */
+async function SearchCache(fileName) {
+    let key;
+    for (let i = 0; i < resourceCacheKeys.length; i++) {
+        if (resourceCacheKeys[i].url.includes(fileName)) {
+            key = resourceCacheKeys[i];
+        }
+    }
+    return await resourceCache.match(key);
+}
+
 const dotnetArrayOffset = 16; // offset of dotnet array from reference to binary data in bytes.
 const nativeLen = 512; // threathold of using native text decoder(for short string, using js-implemented decoder is faster.)
 const nativeDecoder = new TextDecoder();
@@ -215,148 +445,6 @@ const nativeDecoder = new TextDecoder();
  */
 function DecodeUTF8JSON(ptr, len) {
     const array = new Uint8Array(wasmMemory.buffer, ptr + dotnetArrayOffset, len);
-    const str = len > nativeLen ? nativeDecoder.decode(array) : JSDecoder.Decode(array);
+    const str = len > nativeLen ? nativeDecoder.decode(array) : jsTextDecoderModule.Decode(array);
     return JSON.parse(str);
-}
-
-const JSDecoder = {
-    // code from anonyco/FastestSmallestTextEncoderDecoder
-    // Creative Commons Zero v1.0 Universal
-
-    /**
-     * Decode UTF-8 Encoded binary to JS string.
-     * @param {any} inputArrayOrBuffer
-     * @returns {string}
-     */
-    Decode: function Decode(inputArrayOrBuffer) {
-        let fromCharCode = String.fromCharCode;
-        let Object_prototype_toString = ({}).toString;
-        let sharedArrayBufferString = Object_prototype_toString.call(self["SharedArrayBuffer"]);
-        let undefinedObjectString = Object_prototype_toString();
-        let NativeUint8Array = self.Uint8Array;
-        let patchedU8Array = NativeUint8Array || Array;
-        let nativeArrayBuffer = NativeUint8Array ? ArrayBuffer : patchedU8Array;
-        let arrayBuffer_isView = nativeArrayBuffer.isView || function (x) { return x && "length" in x };
-        let arrayBufferString = Object_prototype_toString.call(nativeArrayBuffer.prototype);
-        let tmpBufferU16 = new (NativeUint8Array ? Uint16Array : patchedU8Array)(32);
-
-        let inputAs8 = inputArrayOrBuffer, asObjectString;
-        if (!arrayBuffer_isView(inputAs8)) {
-            asObjectString = Object_prototype_toString.call(inputAs8);
-            if (asObjectString !== arrayBufferString && asObjectString !== sharedArrayBufferString && asObjectString !== undefinedObjectString)
-                throw TypeError("Failed to execute 'decode' on 'TextDecoder': The provided value is not of type '(ArrayBuffer or ArrayBufferView)'");
-            inputAs8 = NativeUint8Array ? new patchedU8Array(inputAs8) : inputAs8 || [];
-        }
-
-        var resultingString = "", tmpStr = "", index = 0, len = inputAs8.length | 0, lenMinus32 = len - 32 | 0, nextEnd = 0, nextStop = 0, cp0 = 0, codePoint = 0, minBits = 0, cp1 = 0, pos = 0, tmp = -1;
-        // Note that tmp represents the 2nd half of a surrogate pair incase a surrogate gets divided between blocks
-        for (; index < len;) {
-            nextEnd = index <= lenMinus32 ? 32 : len - index | 0;
-            for (; pos < nextEnd; index = index + 1 | 0, pos = pos + 1 | 0) {
-                cp0 = inputAs8[index] & 0xff;
-                switch (cp0 >> 4) {
-                    case 15:
-                        cp1 = inputAs8[index = index + 1 | 0] & 0xff;
-                        if ((cp1 >> 6) !== 0b10 || 0b11110111 < cp0) {
-                            index = index - 1 | 0;
-                            break;
-                        }
-                        codePoint = ((cp0 & 0b111) << 6) | (cp1 & 0b00111111);
-                        minBits = 5; // 20 ensures it never passes -> all invalid replacements
-                        cp0 = 0x100; //  keep track of th bit size
-                    case 14:
-                        cp1 = inputAs8[index = index + 1 | 0] & 0xff;
-                        codePoint <<= 6;
-                        codePoint |= ((cp0 & 0b1111) << 6) | (cp1 & 0b00111111);
-                        minBits = (cp1 >> 6) === 0b10 ? minBits + 4 | 0 : 24; // 24 ensures it never passes -> all invalid replacements
-                        cp0 = (cp0 + 0x100) & 0x300; // keep track of th bit size
-                    case 13:
-                    case 12:
-                        cp1 = inputAs8[index = index + 1 | 0] & 0xff;
-                        codePoint <<= 6;
-                        codePoint |= ((cp0 & 0b11111) << 6) | cp1 & 0b00111111;
-                        minBits = minBits + 7 | 0;
-
-                        // Now, process the code point
-                        if (index < len && (cp1 >> 6) === 0b10 && (codePoint >> minBits) && codePoint < 0x110000) {
-                            cp0 = codePoint;
-                            codePoint = codePoint - 0x10000 | 0;
-                            if (0 <= codePoint/*0xffff < codePoint*/) { // BMP code point
-                                //nextEnd = nextEnd - 1|0;
-
-                                tmp = (codePoint >> 10) + 0xD800 | 0;   // highSurrogate
-                                cp0 = (codePoint & 0x3ff) + 0xDC00 | 0; // lowSurrogate (will be inserted later in the switch-statement)
-
-                                if (pos < 31) { // notice 31 instead of 32
-                                    tmpBufferU16[pos] = tmp;
-                                    pos = pos + 1 | 0;
-                                    tmp = -1;
-                                } else {// else, we are at the end of the inputAs8 and let tmp0 be filled in later on
-                                    // NOTE that cp1 is being used as a temporary variable for the swapping of tmp with cp0
-                                    cp1 = tmp;
-                                    tmp = cp0;
-                                    cp0 = cp1;
-                                }
-                            } else nextEnd = nextEnd + 1 | 0; // because we are advancing i without advancing pos
-                        } else {
-                            // invalid code point means replacing the whole thing with null replacement characters
-                            cp0 >>= 8;
-                            index = index - cp0 - 1 | 0; // reset index  back to what it was before
-                            cp0 = 0xfffd;
-                        }
-
-
-                        // Finally, reset the variables for the next go-around
-                        minBits = 0;
-                        codePoint = 0;
-                        nextEnd = index <= lenMinus32 ? 32 : len - index | 0;
-                    /*case 11:
-                    case 10:
-                    case 9:
-                    case 8:
-                        codePoint ? codePoint = 0 : cp0 = 0xfffd; // fill with invalid replacement character
-                    case 7:
-                    case 6:
-                    case 5:
-                    case 4:
-                    case 3:
-                    case 2:
-                    case 1:
-                    case 0:
-                        tmpBufferU16[pos] = cp0;
-                        continue;*/
-                    default:
-                        tmpBufferU16[pos] = cp0; // fill with invalid replacement character
-                        continue;
-                    case 11:
-                    case 10:
-                    case 9:
-                    case 8:
-                }
-                tmpBufferU16[pos] = 0xfffd; // fill with invalid replacement character
-            }
-            tmpStr += fromCharCode(
-                tmpBufferU16[0], tmpBufferU16[1], tmpBufferU16[2], tmpBufferU16[3], tmpBufferU16[4], tmpBufferU16[5], tmpBufferU16[6], tmpBufferU16[7],
-                tmpBufferU16[8], tmpBufferU16[9], tmpBufferU16[10], tmpBufferU16[11], tmpBufferU16[12], tmpBufferU16[13], tmpBufferU16[14], tmpBufferU16[15],
-                tmpBufferU16[16], tmpBufferU16[17], tmpBufferU16[18], tmpBufferU16[19], tmpBufferU16[20], tmpBufferU16[21], tmpBufferU16[22], tmpBufferU16[23],
-                tmpBufferU16[24], tmpBufferU16[25], tmpBufferU16[26], tmpBufferU16[27], tmpBufferU16[28], tmpBufferU16[29], tmpBufferU16[30], tmpBufferU16[31]
-            );
-            if (pos < 32) tmpStr = tmpStr.slice(0, pos - 32 | 0);//-(32-pos));
-            if (index < len) {
-                //fromCharCode.apply(0, tmpBufferU16 : NativeUint8Array ?  tmpBufferU16.subarray(0,pos) : tmpBufferU16.slice(0,pos));
-                tmpBufferU16[0] = tmp;
-                pos = (~tmp) >>> 31;//tmp !== -1 ? 1 : 0;
-                tmp = -1;
-
-                if (tmpStr.length < resultingString.length) continue;
-            } else if (tmp !== -1) {
-                tmpStr += fromCharCode(tmp);
-            }
-
-            resultingString += tmpStr;
-            tmpStr = "";
-        }
-
-        return resultingString;
-    }
 }
