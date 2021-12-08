@@ -1,86 +1,99 @@
 ﻿using Microsoft.JSInterop.WebAssembly;
 
-using WebWorkerParent.Utility;
+using WebWorkerParent.Configure;
 
-namespace WebWorkerParent
+namespace WebWorkerParent;
+
+/// <summary>
+/// Provides easy way to create <see cref="Worker"/>.
+/// </summary>
+/// <remarks>
+/// Add instance of <see cref="WorkerService"/> to DI system at your app's program class.
+/// </remarks>
+public sealed class WorkerService
 {
-    /// <summary>
-    /// Provides easy way to create <see cref="Worker"/>.
-    /// </summary>
-    /// <remarks>
-    /// Add instance of <see cref="WorkerService"/> to DI system at your app's program class.
-    /// </remarks>
-    public class WorkerService
+    private readonly HttpClient httpClient;
+    private readonly WebAssemblyJSRuntime jSRuntime;
+
+    private readonly WorkerParentModule module;
+    private readonly WorkerInitializeSetting workerInitializeSetting;
+
+    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerParentModule module, WorkerInitializeSetting workerInitializeSetting)
     {
-        protected readonly HttpClient httpClient;
-        protected readonly WebAssemblyJSRuntime jSRuntime;
+        this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
+        this.module = module;
+        this.workerInitializeSetting = workerInitializeSetting;
+    }
 
-        protected IJSUnmarshalledObjectReference? jSModule;
-        protected IResourceResolver? resourceResolver;
+    /// <summary>
+    /// Create and configure a new instance of <see cref="WorkerService"/>.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="jSRuntime"></param>
+    /// <param name="func">Function to configure.</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public static Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfig, WorkerServiceConfig> func)
+    {
+        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+        config = func(config);
+        return ConfigureAsync(httpClient, jSRuntime, config);
+    }
 
+    /// <summary>
+    /// Create and configure a new instance of <see cref="WorkerService"/>.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="jSRuntime"></param>
+    /// <param name="func">Function to configure.</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfig, Task<WorkerServiceConfig>> func)
+    {
+        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+        config = await func(config);
+        return await ConfigureAsync(httpClient, jSRuntime, config);
+    }
 
-        protected WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime)
+    /// <summary>
+    /// Create and configure a new instance of <see cref="WorkerService"/>.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="jSRuntime"></param>
+    /// <param name="func">Function to configure.</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
+    {
+        if (config is null || config.jSEnvironmentSetting is null || config.workerInitializeSetting is null)
         {
-            this.httpClient = httpClient;
-            this.jSRuntime = jSRuntime;
+            throw new InvalidOperationException("configs cannot be null.");
+        }
+        if (!config.jSEnvironmentSetting.IsValid(out var message1))
+        {
+            throw new InvalidOperationException($"{nameof(JSEnvironmentSetting)} is invalid. {message1}");
+        }
+        if (!config.workerInitializeSetting.IsValid(out var message2))
+        {
+            throw new InvalidOperationException($"{nameof(WorkerInitializeSetting)} is invalid. {message2}");
         }
 
-        protected async Task InitializeAsync(string jsPath, IResourceResolver resourceResolver)
-        {
-            jSModule = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", jsPath);
-            var config = JSEnvironmentSetting.Default;
-            this.resourceResolver = resourceResolver;
+        var module = await WorkerParentModule.CreateInstanceAsync(jSRuntime, config.jSEnvironmentSetting);
+        var workerInitializeSetting = config.workerInitializeSetting;
 
-            jSModule.InvokeVoidUnmarshalledJson("Configure", config);
-        }
+        WorkerService workerService = new(httpClient, jSRuntime, module, workerInitializeSetting);
+        return workerService;
+    }
 
-        /// <summary>
-        /// Create new instance of <see cref="WorkerService"/>.
-        /// </summary>
-        /// <remarks>
-        /// In Blazor WebAssembly app, injected <see cref="IJSRuntime"/> can be casted to <see cref="WebAssemblyJSRuntime"/>.
-        /// </remarks>
-        /// <param name="httpClient">available <see cref="HttpClient"></see> instance.</param>
-        /// <param name="jSRuntime">available <see cref="WebAssemblyJSRuntime"/> instance.</param>
-        /// <returns></returns>
-        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IResourceResolver? resolver = null)
-        {
-            var instance = new WorkerService(httpClient, jSRuntime);
-            await instance.InitializeAsync(Settings.WorkerParentScriptPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
-            return instance;
-        }
-
-        /// <summary>
-        /// Create new instance of <see cref="WorkerService"/>.
-        /// </summary>
-        /// <remarks>
-        /// In Blazor WebAssembly app, injected <see cref="IJSRuntime"/> can be casted to <see cref="WebAssemblyJSRuntime"/>.
-        /// </remarks>
-        /// <param name="httpClient">available <see cref="HttpClient"></see> instance.</param>
-        /// <param name="jSRuntime">available <see cref="WebAssemblyJSRuntime"/> instance.</param>
-        /// <param name="jsPath">custom path to worker parent js module.</param>
-        /// <returns></returns>
-        public static async Task<WorkerService> CreateInstanceAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, string jsPath, IResourceResolver? resolver = null)
-        {
-            var instance = new WorkerService(httpClient, jSRuntime);
-            await instance.InitializeAsync(jsPath, resolver ?? await BootJsonResourceResolver.CreateInstanceAsync(httpClient, Settings.BootJsonPath));
-            return instance;
-        }
-
-        /// <summary>
-        /// Get new instance of <see cref="Worker"/>.
-        /// </summary>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public Worker CreateWorker()
-        {
-            if (jSModule is null)
-            {
-                throw new InvalidOperationException($"Service was not initialized. You have to call '{nameof(InitializeAsync)}' first.");
-            }
-
-            var worker = new Worker(resourceResolver!, jSRuntime, jSModule);
-            return worker;
-        }
+    /// <summary>
+    /// Get new instance of <see cref="Worker"/>.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public Worker CreateWorker()
+    {
+        var worker = new Worker(jSRuntime, module, workerInitializeSetting);
+        return worker;
     }
 }

@@ -1,54 +1,46 @@
 ﻿using Microsoft.JSInterop.WebAssembly;
 
+using WebWorkerParent.Configure;
 using WebWorkerParent.Tasks;
-using WebWorkerParent.Utility;
 
 namespace WebWorkerParent
 {
     /// <summary>
     /// Web Worker APIによるワーカーを表現します。
     /// </summary>
-    public class Worker
+    public class Worker : IAsyncDisposable
     {
-        private readonly IResourceResolver resourceResolver;
         private readonly WebAssemblyJSRuntime jSRuntime;
-        private readonly IJSUnmarshalledObjectReference jSModule;
+        private readonly WorkerParentModule module;
+        private readonly WorkerInitializeSetting workerInitializeSetting;
 
-        public Worker(IResourceResolver resourceResolver, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference jSModule)
+        public Worker(WebAssemblyJSRuntime jSRuntime, WorkerParentModule module, WorkerInitializeSetting workerInitializeSetting)
         {
-            this.resourceResolver = resourceResolver ?? throw new ArgumentNullException(nameof(resourceResolver));
-            this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
-            this.jSModule = jSModule ?? throw new ArgumentNullException(nameof(jSModule));
+            this.jSRuntime = jSRuntime;
+            this.module = module;
+            this.workerInitializeSetting = workerInitializeSetting;
         }
 
         private int workerId = -1;
 
         public WorkerTask Start()
         {
-            var asm = resourceResolver.ResolveAssemblies();
-            var dotnetJS = resourceResolver.ResolveDotnetJS();
-            var workerInitOption = WorkerInitializeSetting.Default with { DotnetJsName = dotnetJS, Assemblies = asm.ToArray() };
-
-            return StartInternal(workerInitOption);
-        }
-
-        public WorkerTask Start(WorkerInitializeSetting workerInitOption)
-        {
-            return StartInternal(workerInitOption);
-        }
-
-        private StartWorkerTask StartInternal(WorkerInitializeSetting workerInitOption)
-        {
             if (workerId >= 0)
             {
-                throw new InvalidOperationException("既にワーカーは起動しています。");
+                throw new InvalidOperationException("Worker is already started.");
             }
-            StartWorkerTask task = new StartWorkerTask(jSRuntime, jSModule, workerInitOption, id => workerId = id);
+            StartWorkerTask task = new(jSRuntime, module.InternalModule, workerInitializeSetting, id => workerId = id);
             return task;
         }
 
         public Task Terminate()
         {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            //TODO: terminate worker and release related js resource.
             throw new NotImplementedException();
         }
 
@@ -59,7 +51,7 @@ namespace WebWorkerParent
         /// <returns></returns>
         public async Task _Call(string name)
         {
-            await jSModule.InvokeVoidAsync("_Call", workerId, "[SampleWorkerAssembly]SampleWorkerAssembly.Hoge:" + name);
+            await module.InternalModule.InvokeVoidAsync("_Call", workerId, "[SampleWorkerAssembly]SampleWorkerAssembly.Hoge:" + name);
         }
     }
 }

@@ -16,13 +16,19 @@
 <button class="btn btn-primary" @onclick="OnRunClicked">実行</button>
 
 @code {
-    private Worker worker;
+    private Worker? worker;
     private string bootTime = "";
 
     protected async Task OnBootClick()
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        WorkerService service = await WorkerService.CreateInstanceAsync(Http, JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException());
+        var runtime = JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException();
+
+        WorkerService service = await WorkerService.ConfigureAsync(Http, runtime, async config =>
+            (await config.ResolveResoucesFromBootJson(Http))
+            .FetchBrotliResources("decode.min.js")
+        );
+
         this.worker = service.CreateWorker();
         await worker.Start();
         watch.Stop();
@@ -31,6 +37,10 @@
 
     protected async Task OnRunClicked()
     {
+        if(worker is null)
+        {
+            return;
+        }
         await worker._Call(nameof(SampleWorkerAssembly.Hoge.Fuga));
         await worker._Call(nameof(SampleWorkerAssembly.Hoge.Piyo));
     }

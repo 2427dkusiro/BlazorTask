@@ -2,7 +2,7 @@
 Blazor.start({
     loadBootResource: function (type, name, defaultUri, integrity) {
         // this means app is in debug mode.
-        if (location.hostname == "localhost" && location.port != "5050") {
+        if (location.hostname == "localhost" && location.port != "5500") {
             const span = document.getElementById("ProgressLoadMode");
             if (span.textContent == "") {
                 span.textContent = "Brotli圧縮無効";
@@ -11,7 +11,7 @@ Blazor.start({
             return;
         }
 
-        if (type !== 'dotnetjs' && location.hostname !== 'localhost') {
+        if (type !== 'dotnetjs') {
             return (async function () {
                 const response = await fetch(defaultUri + '.br', { cache: 'no-cache' });
                 if (!response.ok) {
