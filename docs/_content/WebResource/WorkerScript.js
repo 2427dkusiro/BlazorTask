@@ -4,6 +4,9 @@
 let basePath;
 
 /** @type string */
+let jsExecutePath;
+
+/** @type string */
 let frameworkDirName;
 
 /** @type string */
@@ -52,6 +55,7 @@ function ConfigureThis(eventArg) {
     /**@type WorkerInitializeSetting */
     const setting = JSON.parse(str);
     basePath = setting.BasePath;
+    jsExecutePath = setting.JSExecutePath;
     frameworkDirName = setting.FrameworkDirName;
     appBinDirName = setting.AppBinDirName;
     dotnetJsName = setting.DotnetJsName;
@@ -274,6 +278,7 @@ function _postMessage(message) {
 
 /**
  * @typedef WorkerInitializeSetting
+ * @property {string} JSExecutePath
  * @property {string} BasePath
  * @property {string} FrameworkDirName
  * @property {string} AppBinDirName
@@ -314,7 +319,7 @@ function _postMessage(message) {
  * @returns {string} relative path to file.
  */
 function BuildFrameworkPath(name) {
-    return basePath + "/" + frameworkDirName + "/" + name;
+    return jsExecutePath + "/" + frameworkDirName + "/" + name;
 }
 
 /**
@@ -324,7 +329,7 @@ function BuildFrameworkPath(name) {
  * @returns {string} relative path to file.
  */
 function BuildPath(name) {
-    return basePath + "/" + name;
+    return jsExecutePath + "/" + name;
 }
 
 /** @type Cache */
@@ -333,7 +338,7 @@ let resourceCache;
 /** @type readonly Request[] */
 let resourceCacheKeys;
 
-const targetCacheKey = "blazor-resources";
+const cachePrefix = "blazor-resources-";
 
 /**
  * Fetch resource by configured way.
@@ -390,6 +395,7 @@ let cacheInitializeTryed = false;
  * */
 async function InitializeCache() {
     cacheInitializeTryed = true;
+    const targetCacheKey = cachePrefix + basePath;
 
     if (useCache) {
         if (resourceCache == null) {
