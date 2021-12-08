@@ -25,6 +25,7 @@ public record WorkerInitializeSetting
             ResourceDecoderPath = null,
             ResourceDecodeMathodName = null,
             ResourcePrefix = null,
+            UseResourceCache = true,
             Assemblies = null,
         };
     }
@@ -44,6 +45,8 @@ public record WorkerInitializeSetting
     public string? ResourceDecodeMathodName { get; init; }
 
     public string? ResourcePrefix { get; init; }
+
+    public bool UseResourceCache { get; init; }
 
     public string[]? Assemblies { get; init; }
 
