@@ -27,6 +27,9 @@ let resourceSuffix;
 /** @type string[] */
 let dotnetAssemblies;
 
+/** @type boolean */
+let useCache;
+
 let decoderModule;
 
 let jsTextDecoderModule;
@@ -56,6 +59,7 @@ function ConfigureThis(eventArg) {
     resourceDecoderPath = setting.ResourceDecoderPath;
     resourceDecodeMathodName = setting.ResourceDecodeMathodName;
     resourceSuffix = setting.ResourcePrefix;
+    useCache = setting.UseResourceCache;
     dotnetAssemblies = setting.Assemblies;
 }
 
@@ -137,12 +141,17 @@ function InstantiateWasm(imports, successCallback) {
         /** @type WebAssembly.Instance */
         let compiledInstance;
         try {
-            if (resourceDecoderPath == null) {
-                const dotnetWasmResource = fetch(BuildFrameworkPath(dotnetWasmName));
-                compiledInstance = await CompileWasmModule(dotnetWasmResource, imports);
-            } else {
+            if (!cacheInitializeTryed) {
+                await InitializeCache();
+            }
+            // if cache available or decode required, cannot(or not necessary to) do streaming compile.
+            if (cacheAvailable || resourceDecoderPath != null) {
                 const responce = await FetchResource(dotnetWasmName);
                 compiledInstance = await CompileWasmModuleArrayBuffer(responce.buffer, imports);
+            }
+            else {
+                const dotnetWasmResource = fetch(BuildFrameworkPath(dotnetWasmName));
+                compiledInstance = await CompileWasmModule(dotnetWasmResource, imports);
             }
         } catch (ex) {
             console.error(ex.toString());
@@ -261,6 +270,7 @@ function _postMessage(message) {
 }
 
 // #region typedef
+// must sync following typedef to dotnet class
 
 /**
  * @typedef WorkerInitializeSetting
@@ -272,6 +282,7 @@ function _postMessage(message) {
  * @property {string} ResourceDecoderPath
  * @property {string} ResourceDecodeMathodName
  * @property {string} ResourcePrefix
+ * @property {boolean} UseResourceCache
  * @property {string[]} Assemblies
  * */
 
@@ -316,12 +327,30 @@ function BuildPath(name) {
     return basePath + "/" + name;
 }
 
+/** @type Cache */
+let resourceCache;
+
+/** @type readonly Request[] */
+let resourceCacheKeys;
+
+const targetCacheKey = "blazor-resources";
+
 /**
  * Fetch resource by configured way.
  * @param {string} fileName
  * @returns {Promise<Uint8Array | Int8Array>}
  */
 async function FetchResource(fileName) {
+    if (!cacheInitializeTryed) {
+        await InitializeCache();
+    }
+    if (cacheAvailable) {
+        const cacheResponce = await SearchCache(fileName);
+        if (cacheResponce != null) {
+            return new Uint8Array(await cacheResponce.arrayBuffer());
+        }
+    }
+
     /** @type Response */
     let responce;
 
@@ -352,7 +381,59 @@ async function FetchResource(fileName) {
     return null;
 }
 
-// must sync following to parent
+let cacheAvailable = false;
+let cacheInitializeTryed = false;
+
+/**
+ * Initialize cache system
+ * @returns {Promise<void>}
+ * */
+async function InitializeCache() {
+    cacheInitializeTryed = true;
+
+    if (useCache) {
+        if (resourceCache == null) {
+            const keys = await caches.keys();
+            for (let i = 0; i < keys.length; i++) {
+                if (keys[i].startsWith(targetCacheKey)) {
+                    resourceCache = await caches.open(keys[i]);
+                    break;
+                }
+            }
+            if (resourceCache == null) {
+                return;
+            }
+        }
+        if (resourceCacheKeys == null) {
+            resourceCacheKeys = await resourceCache.keys();
+            if (resourceCacheKeys == null || resourceCacheKeys.length == 0) {
+                cacheAvailable = false;
+                return;
+            } else {
+                cacheAvailable = true;
+                return;
+            }
+        }
+    } else {
+        cacheAvailable = false;
+    }
+}
+
+/**
+ * Search resource from resource cache. If cache is not hit, returns null.
+ * @param {string} fileName filename to serach.
+ * @returns {Promise<Response>}
+ */
+async function SearchCache(fileName) {
+    let key;
+    for (let i = 0; i < resourceCacheKeys.length; i++) {
+        if (resourceCacheKeys[i].url.includes(fileName)) {
+            key = resourceCacheKeys[i];
+        }
+    }
+    return await resourceCache.match(key);
+}
+
 const dotnetArrayOffset = 16; // offset of dotnet array from reference to binary data in bytes.
 const nativeLen = 512; // threathold of using native text decoder(for short string, using js-implemented decoder is faster.)
 const nativeDecoder = new TextDecoder();

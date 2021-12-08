@@ -1,5 +1,4 @@
-﻿@using WebWorkerParent;
-@inject IJSRuntime JSRuntime;
+﻿@inject IJSRuntime JSRuntime;
 @inject HttpClient Http;
 
 @page "/"
@@ -9,39 +8,11 @@
 <h1>Hello, world!</h1>
 
 <h3>ワーカー起動</h3>
-<button class="btn btn-primary" @onclick="OnBootClick">起動</button>
-<span>@bootTime</span>
+<div>
+    <button class="btn btn-primary" @onclick="OnBootClick">起動</button>
+    <span>@serviceBootTime</span>
+    <span>@workerBootTime</span>
+</div>
 
 <h3>メソッド呼び出し</h3>
 <button class="btn btn-primary" @onclick="OnRunClicked">実行</button>
-
-@code {
-    private Worker? worker;
-    private string bootTime = "";
-
-    protected async Task OnBootClick()
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        var runtime = JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException();
-
-        WorkerService service = await WorkerService.ConfigureAsync(Http, runtime, async config =>
-            (await config.ResolveResoucesFromBootJson(Http))
-            .FetchBrotliResources("decode.min.js")
-        );
-
-        this.worker = service.CreateWorker();
-        await worker.Start();
-        watch.Stop();
-        bootTime = watch.Elapsed.TotalMilliseconds.ToString("F1") + "ms";
-    }
-
-    protected async Task OnRunClicked()
-    {
-        if (worker is null)
-        {
-            return;
-        }
-        await worker._Call(nameof(SampleWorkerAssembly.Hoge.Fuga));
-        await worker._Call(nameof(SampleWorkerAssembly.Hoge.Piyo));
-    }
-}

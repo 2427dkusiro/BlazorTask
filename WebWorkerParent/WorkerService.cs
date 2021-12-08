@@ -34,11 +34,12 @@ public sealed class WorkerService
     /// <param name="func">Function to configure.</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public static Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfig, WorkerServiceConfig> func)
+    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
     {
-        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
-        config = func(config);
-        return ConfigureAsync(httpClient, jSRuntime, config);
+        var config = new WorkerServiceConfigHelper.WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+        var helper = new WorkerServiceConfigHelper();
+        var result = await func(helper).ApplyAllAsync(config);
+        return await ConfigureAsync(httpClient, jSRuntime, result);
     }
 
     /// <summary>
@@ -49,24 +50,9 @@ public sealed class WorkerService
     /// <param name="func">Function to configure.</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfig, Task<WorkerServiceConfig>> func)
+    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfigHelper.WorkerServiceConfig config)
     {
-        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
-        config = await func(config);
-        return await ConfigureAsync(httpClient, jSRuntime, config);
-    }
-
-    /// <summary>
-    /// Create and configure a new instance of <see cref="WorkerService"/>.
-    /// </summary>
-    /// <param name="httpClient"></param>
-    /// <param name="jSRuntime"></param>
-    /// <param name="func">Function to configure.</param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
-    {
-        if (config is null || config.jSEnvironmentSetting is null || config.workerInitializeSetting is null)
+        if (config.jSEnvironmentSetting is null || config.workerInitializeSetting is null)
         {
             throw new InvalidOperationException("configs cannot be null.");
         }
