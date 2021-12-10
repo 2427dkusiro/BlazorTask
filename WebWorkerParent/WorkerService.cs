@@ -15,15 +15,15 @@ public sealed class WorkerService
     private readonly HttpClient httpClient;
     private readonly WebAssemblyJSRuntime jSRuntime;
 
-    private readonly WorkerParentModule module;
-    private readonly WorkerInitializeSetting workerInitializeSetting;
+    private readonly IJSUnmarshalledObjectReference module;
+    private readonly WorkerServiceConfig config;
 
-    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerParentModule module, WorkerInitializeSetting workerInitializeSetting)
+    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference module, WorkerServiceConfig config)
     {
         this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
         this.module = module;
-        this.workerInitializeSetting = workerInitializeSetting;
+        this.config = config;
     }
 
     /// <summary>
@@ -36,7 +36,7 @@ public sealed class WorkerService
     /// <exception cref="InvalidOperationException"></exception>
     public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
     {
-        var config = new WorkerServiceConfigHelper.WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
         var helper = new WorkerServiceConfigHelper();
         var result = await func(helper).ApplyAllAsync(config);
         return await ConfigureAsync(httpClient, jSRuntime, result);
@@ -50,25 +50,25 @@ public sealed class WorkerService
     /// <param name="func">Function to configure.</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfigHelper.WorkerServiceConfig config)
+    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
     {
-        if (config.jSEnvironmentSetting is null || config.workerInitializeSetting is null)
+        if (config.JSEnvironmentSetting is null || config.WorkerInitializeSetting is null)
         {
             throw new InvalidOperationException("configs cannot be null.");
         }
-        if (!config.jSEnvironmentSetting.IsValid(out var message1))
+        if (!config.JSEnvironmentSetting.IsValid(out var message1))
         {
             throw new InvalidOperationException($"{nameof(JSEnvironmentSetting)} is invalid. {message1}");
         }
-        if (!config.workerInitializeSetting.IsValid(out var message2))
+        if (!config.WorkerInitializeSetting.IsValid(out var message2))
         {
             throw new InvalidOperationException($"{nameof(WorkerInitializeSetting)} is invalid. {message2}");
         }
 
-        var module = await WorkerParentModule.CreateInstanceAsync(jSRuntime, config.jSEnvironmentSetting);
-        var workerInitializeSetting = config.workerInitializeSetting;
+        var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
+        module.InvokeVoidUnmarshalledJson("Configure", config.JSEnvironmentSetting);
 
-        WorkerService workerService = new(httpClient, jSRuntime, module, workerInitializeSetting);
+        WorkerService workerService = new(httpClient, jSRuntime, module, config);
         return workerService;
     }
 
@@ -79,7 +79,7 @@ public sealed class WorkerService
     /// <exception cref="InvalidOperationException"></exception>
     public Worker CreateWorker()
     {
-        var worker = new Worker(jSRuntime, module, workerInitializeSetting);
+        var worker = new Worker(jSRuntime, module, config.WorkerInitializeSetting);
         return worker;
     }
 }

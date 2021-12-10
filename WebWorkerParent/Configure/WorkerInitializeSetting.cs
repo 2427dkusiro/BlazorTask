@@ -17,7 +17,8 @@ public record WorkerInitializeSetting
     {
         get => defaultInstance ??= new WorkerInitializeSetting()
         {
-            BasePath = "../..",
+            JSExecutePath = "../..",
+            BasePath = "/",
             FrameworkDirName = "_framework",
             AppBinDirName = "appBinDir",
             DotnetJsName = null,
@@ -29,6 +30,8 @@ public record WorkerInitializeSetting
             Assemblies = null,
         };
     }
+
+    public string? JSExecutePath { get; init; }
 
     public string? BasePath { get; init; }
 
@@ -57,7 +60,7 @@ public record WorkerInitializeSetting
     /// <returns></returns>
     public bool IsValid([NotNullWhen(false)] out string? message)
     {
-        var mustNotEmpty = new string?[] { BasePath, FrameworkDirName, AppBinDirName, DotnetJsName, DotnetWasmName };
+        var mustNotEmpty = new string?[] { JSExecutePath, BasePath, FrameworkDirName, AppBinDirName, DotnetJsName, DotnetWasmName };
         if (mustNotEmpty.Any(str => string.IsNullOrEmpty(str)))
         {
             message = $"Some required properties are null or empty.";
