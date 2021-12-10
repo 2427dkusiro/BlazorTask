@@ -4,8 +4,6 @@ namespace WebWorkerParent;
 
 public class WorkerServiceConfigHelper
 {
-    public record struct WorkerServiceConfig(JSEnvironmentSetting jSEnvironmentSetting, WorkerInitializeSetting workerInitializeSetting);
-
     private readonly Queue<Func<WorkerServiceConfig, WorkerServiceConfig>> syncFunc = new();
 
     private readonly Queue<Func<WorkerServiceConfig, Task<WorkerServiceConfig>>> asyncFunc = new();
@@ -27,7 +25,8 @@ public class WorkerServiceConfigHelper
     internal async Task<WorkerServiceConfig> ApplyAllAsync(WorkerServiceConfig first)
     {
         WorkerServiceConfig current = first;
-        for (int i = 0; i < isAsync.Count; i++)
+        var count = isAsync.Count;
+        for (int i = 0; i < count; i++)
         {
             var _isAsync = isAsync.Dequeue();
             if (_isAsync)
@@ -42,6 +41,8 @@ public class WorkerServiceConfigHelper
         return current;
     }
 }
+
+public record struct WorkerServiceConfig(JSEnvironmentSetting JSEnvironmentSetting, WorkerInitializeSetting WorkerInitializeSetting);
 
 public static class ConfigureExtentionMethod
 {
@@ -66,11 +67,11 @@ public static class ConfigureExtentionMethod
         return helper;
     }
 
-    private static WorkerServiceConfigHelper.WorkerServiceConfig FromResolver(WorkerServiceConfigHelper.WorkerServiceConfig config, IResourceResolver resourceResolver)
+    private static WorkerServiceConfig FromResolver(WorkerServiceConfig config, IResourceResolver resourceResolver)
     {
         return config with
         {
-            workerInitializeSetting = config.workerInitializeSetting with
+            WorkerInitializeSetting = config.WorkerInitializeSetting with
             {
                 Assemblies = resourceResolver.ResolveAssemblies().ToArray(),
                 DotnetJsName = resourceResolver.ResolveDotnetJS(),
@@ -82,11 +83,35 @@ public static class ConfigureExtentionMethod
     {
         helper.EnqueueSync(config => config with
         {
-            workerInitializeSetting = config.workerInitializeSetting with
+            WorkerInitializeSetting = config.WorkerInitializeSetting with
             {
                 ResourceDecoderPath = decoderJSPath,
                 ResourceDecodeMathodName = "BrotliDecode",
                 ResourcePrefix = ".br",
+            }
+        });
+        return helper;
+    }
+
+    public static WorkerServiceConfigHelper SetBasePath(this WorkerServiceConfigHelper helper, string basePath)
+    {
+        helper.EnqueueSync(config => config with
+        {
+            WorkerInitializeSetting = config.WorkerInitializeSetting with
+            {
+                BasePath = basePath,
+            }
+        });
+        return helper;
+    }
+
+    public static WorkerServiceConfigHelper DisableCache(this WorkerServiceConfigHelper helper)
+    {
+        helper.EnqueueSync(config => config with
+        {
+            WorkerInitializeSetting = config.WorkerInitializeSetting with
+            {
+                UseResourceCache = false,
             }
         });
         return helper;

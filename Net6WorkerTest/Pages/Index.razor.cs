@@ -32,8 +32,8 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            await worker._Call(nameof(SampleWorkerAssembly.Hoge.Fuga));
-            await worker._Call(nameof(SampleWorkerAssembly.Hoge.Piyo));
+            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod("HogeFuga");
+            await worker.Call(method, 123, DateTime.Now);
         }
     }
 }

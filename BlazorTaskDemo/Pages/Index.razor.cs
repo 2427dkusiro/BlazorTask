@@ -16,6 +16,7 @@ namespace BlazorTaskDemo.Pages
             WorkerService service = await WorkerService.ConfigureAsync(Http, runtime, config => config
                 .ResolveResourcesFromBootJson(Http)
                 .FetchBrotliResources("decode.min.js")
+                .SetBasePath(Http.BaseAddress?.AbsolutePath ?? throw new InvalidOperationException())
             );
             watch.Stop();
             serviceBootTime = $"サービス起動時間：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";

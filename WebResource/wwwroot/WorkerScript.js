@@ -4,6 +4,9 @@
 let basePath;
 
 /** @type string */
+let jsExecutePath;
+
+/** @type string */
 let frameworkDirName;
 
 /** @type string */
@@ -30,6 +33,14 @@ let dotnetAssemblies;
 /** @type boolean */
 let useCache;
 
+// When undefined, use browser provided locale string.
+let dotnetCulture = undefined;
+
+// When undefined, use browser provided timezone string.
+let timeZoneString = undefined;
+
+let timeZoneFileName = "dotnet.timezones.blat";
+
 let decoderModule;
 
 let jsTextDecoderModule;
@@ -52,6 +63,7 @@ function ConfigureThis(eventArg) {
     /**@type WorkerInitializeSetting */
     const setting = JSON.parse(str);
     basePath = setting.BasePath;
+    jsExecutePath = setting.JSExecutePath;
     frameworkDirName = setting.FrameworkDirName;
     appBinDirName = setting.AppBinDirName;
     dotnetJsName = setting.DotnetJsName;
@@ -61,6 +73,13 @@ function ConfigureThis(eventArg) {
     resourceSuffix = setting.ResourcePrefix;
     useCache = setting.UseResourceCache;
     dotnetAssemblies = setting.Assemblies;
+
+    if (dotnetCulture == undefined) {
+        dotnetCulture = Intl.DateTimeFormat().resolvedOptions().locale;
+    }
+    if (timeZoneString == undefined) {
+        timeZoneString = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
 }
 
 /**
@@ -225,7 +244,29 @@ async function PreRun() {
             removeRunDependency(runDependencyId);
         }
     });
+
+    await LoadTimezone(timeZoneFileName);
+
+    const icuFileName = Module.mono_wasm_get_icudt_name(dotnetCulture);
+    console.log(icuFileName);
+    addRunDependency(`blazor:icudata`);
+    const icuData = await FetchResource(icuFileName);
+    if (icuData == null) {
+        removeRunDependency(`blazor:icudata`);
+        useInvariantCulture = true;
+        MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
+        console.warn("Failed to fetch icu data. Fall back to use invariant culture.");
+    } else {
+        const heapAddress = Module._malloc(icuData.length);
+        const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, icuData.length);
+        heapMemory.set(icuData);
+        _mono_wasm_load_icu_data(heapAddress);
+        MONO.loaded_files.push(icuFileName);
+        removeRunDependency(`blazor:icudata`);
+    }
 }
+
+let useInvariantCulture = false;
 
 /**
  * Finalize boot process here.
@@ -234,19 +275,25 @@ async function PreRun() {
  * */
 function PostRun() {
     MONO.mono_wasm_setenv("MONO_URI_DOTNETRELATIVEORABSOLUTE", "true");
+    if (!useInvariantCulture) {
+        MONO.mono_wasm_setenv('LANG', `${dotnetCulture}.UTF-8`);
+    }
+    MONO.mono_wasm_setenv("TZ", timeZoneString);
+    MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY", "1");
     _mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
     postMessage("_init");
 }
 
+let receiver;
 /**
  * Initialize message dispatch service here. You can call .NET method here.
  * @private
  * @returns {void}
  * */
 function InitializeMessagingService() {
-
+    receiver = Module.mono_bind_static_method("[SampleWorkerAssembly]SampleWorkerAssembly.Hoge:HogeFuga");
 }
 
 /**
@@ -256,17 +303,26 @@ function InitializeMessagingService() {
  * @returns {void}
  */
 function OnMessageReceived(message) {
-    if (message.data.endsWith("Fuga")) {
-        Module.mono_call_static_method(message.data, []);
-    }
-    if (message.data.endsWith("Piyo")) {
-        Module.mono_call_static_method(message.data, ["argument from js"]);
-    }
-}
+    const type = message.data.t;
+    const data = message.data.d;
 
-// これデバッグ用なので消えます
-function _postMessage(message) {
-    postMessage(message);
+    switch (type) {
+        case "SCall":
+            const name = new Uint8Array(data[0]);
+            const arg = new Uint8Array(data[1]);
+
+            const buffer1 = Module._malloc(name.length);
+            const array1 = new Uint8Array(Module.HEAPU8.buffer, buffer1, name.length);
+            array1.set(name);
+
+            const buffer2 = Module._malloc(arg.length);
+            const array2 = new Uint8Array(Module.HEAPU8.buffer, buffer2, arg.length);
+            array2.set(arg);
+
+            receiver(buffer1, name.length, buffer2, arg.length);
+
+            return;
+    }
 }
 
 // #region typedef
@@ -274,6 +330,7 @@ function _postMessage(message) {
 
 /**
  * @typedef WorkerInitializeSetting
+ * @property {string} JSExecutePath
  * @property {string} BasePath
  * @property {string} FrameworkDirName
  * @property {string} AppBinDirName
@@ -314,7 +371,7 @@ function _postMessage(message) {
  * @returns {string} relative path to file.
  */
 function BuildFrameworkPath(name) {
-    return basePath + "/" + frameworkDirName + "/" + name;
+    return jsExecutePath + "/" + frameworkDirName + "/" + name;
 }
 
 /**
@@ -324,7 +381,26 @@ function BuildFrameworkPath(name) {
  * @returns {string} relative path to file.
  */
 function BuildPath(name) {
-    return basePath + "/" + name;
+    return jsExecutePath + "/" + name;
+}
+
+/**
+ * Load timezone data.
+ * @param {string} name File Name 
+ * @returns {Promise<void>}
+ */
+async function LoadTimezone(name){
+    const runDependencyId = `blazor:timezonedata`;
+    addRunDependency(runDependencyId);
+
+    const data = await FetchResource(name);
+
+    Module['FS_createPath']('/', 'usr', true, true);
+    Module['FS_createPath']('/usr/', 'share', true, true);
+    Module['FS_createPath']('/usr/share/', 'zoneinfo', true, true);
+    MONO.mono_wasm_load_data_archive(data, '/usr/share/zoneinfo/');
+
+    removeRunDependency(runDependencyId);
 }
 
 /** @type Cache */
@@ -333,7 +409,7 @@ let resourceCache;
 /** @type readonly Request[] */
 let resourceCacheKeys;
 
-const targetCacheKey = "blazor-resources";
+const cachePrefix = "blazor-resources-";
 
 /**
  * Fetch resource by configured way.
@@ -390,6 +466,7 @@ let cacheInitializeTryed = false;
  * */
 async function InitializeCache() {
     cacheInitializeTryed = true;
+    const targetCacheKey = cachePrefix + basePath;
 
     if (useCache) {
         if (resourceCache == null) {
@@ -431,6 +508,7 @@ async function SearchCache(fileName) {
             key = resourceCacheKeys[i];
         }
     }
+    //TODO: should I check the integrity of cache?
     return await resourceCache.match(key);
 }
 

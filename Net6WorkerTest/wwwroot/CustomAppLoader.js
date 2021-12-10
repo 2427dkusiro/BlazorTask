@@ -1,4 +1,6 @@
 ﻿import { BrotliDecode } from './decode.min.js';
+// import { Base64Decode } from "./Base64Decode.js";
+
 Blazor.start({
     loadBootResource: function (type, name, defaultUri, integrity) {
         // this means app is in debug mode.
@@ -20,6 +22,7 @@ Blazor.start({
                 const originalResponseBuffer = await response.arrayBuffer();
                 const originalResponseArray = new Int8Array(originalResponseBuffer);
                 const decompressedResponseArray = BrotliDecode(originalResponseArray);
+
                 const contentType = type ===
                     'dotnetwasm' ? 'application/wasm' : 'application/octet-stream';
                 return new Response(decompressedResponseArray,
