@@ -1,4 +1,4 @@
-﻿namespace WebWorkerParent
+﻿namespace BlazorTask
 {
     public static class JSHelper
     {

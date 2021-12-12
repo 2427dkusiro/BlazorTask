@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace WebWorkerParent.Configure;
+namespace BlazorTask.Configure;
 
 public sealed class BootJsonResourceResolver : IResourceResolver
 {

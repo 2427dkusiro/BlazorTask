@@ -1,5 +1,5 @@
 ﻿global using Microsoft.JSInterop;
-namespace WebWorkerParent;
+namespace BlazorTask;
 
 internal static class DefaultSettings
 {

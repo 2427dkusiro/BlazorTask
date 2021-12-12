@@ -5,13 +5,13 @@ VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Net6WorkerTest", "Net6WorkerTest\Net6WorkerTest.csproj", "{97666D0F-00ED-46A8-8037-9A665A89E69C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebWorkerParent", "WebWorkerParent\WebWorkerParent.csproj", "{09B70F6E-4F6E-4CA7-A1A8-68C790349DC6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebWorker", "WebWorkerParent\WebWorker.csproj", "{09B70F6E-4F6E-4CA7-A1A8-68C790349DC6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleWorkerAssembly", "SampleWorkerAssembly\SampleWorkerAssembly.csproj", "{29FA5967-745A-4AA3-8F25-C3F203F4A0E4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebResource", "WebResource\WebResource.csproj", "{77C3823B-0DE4-4E00-822E-66C22A343AA9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebResource", "WebResource\WebResource.csproj", "{77C3823B-0DE4-4E00-822E-66C22A343AA9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorTaskDemo", "BlazorTaskDemo\BlazorTaskDemo.csproj", "{230B667E-74A3-466D-9320-2299B4919794}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorTaskDemo", "BlazorTaskDemo\BlazorTaskDemo.csproj", "{230B667E-74A3-466D-9320-2299B4919794}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

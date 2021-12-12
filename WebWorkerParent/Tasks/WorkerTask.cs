@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace WebWorkerParent.Tasks
+namespace BlazorTask.Tasks
 {
     public abstract class WorkerTask
     {

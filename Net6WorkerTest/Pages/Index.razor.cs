@@ -1,4 +1,4 @@
-﻿using WebWorkerParent;
+﻿using BlazorTask;
 
 namespace Net6WorkerTest.Pages
 {
@@ -32,8 +32,9 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod("HogeFuga");
-            await worker.Call(method, 123, DateTime.Now);
+            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod("Fuga");
+            var task = worker.Call(method, 123, DateTime.Now);
+            await task;
         }
     }
 }

@@ -1,6 +1,6 @@
-﻿using WebWorkerParent.Configure;
+﻿using BlazorTask.Configure;
 
-namespace WebWorkerParent;
+namespace BlazorTask;
 
 public class WorkerServiceConfigHelper
 {
@@ -87,7 +87,7 @@ public static class ConfigureExtentionMethod
             {
                 ResourceDecoderPath = decoderJSPath,
                 ResourceDecodeMathodName = "BrotliDecode",
-                ResourcePrefix = ".br",
+                ResourceSuffix = ".br",
             }
         });
         return helper;

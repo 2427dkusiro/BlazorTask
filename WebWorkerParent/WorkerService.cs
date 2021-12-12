@@ -1,8 +1,8 @@
-﻿using Microsoft.JSInterop.WebAssembly;
+﻿using BlazorTask.Configure;
 
-using WebWorkerParent.Configure;
+using Microsoft.JSInterop.WebAssembly;
 
-namespace WebWorkerParent;
+namespace BlazorTask;
 
 /// <summary>
 /// Provides easy way to create <see cref="Worker"/>.
@@ -18,12 +18,18 @@ public sealed class WorkerService
     private readonly IJSUnmarshalledObjectReference module;
     private readonly WorkerServiceConfig config;
 
-    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference module, WorkerServiceConfig config)
+    private readonly Messaging.MessageHandler messageHandler;
+    private readonly IntPtr bufferPtr;
+    private const int bufferLength = 256;
+
+    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference module, WorkerServiceConfig config, Messaging.MessageHandler messageHandler, IntPtr bufferPtr)
     {
         this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
-        this.module = module;
+        this.module = module ?? throw new ArgumentNullException(nameof(module));
         this.config = config;
+        this.messageHandler = messageHandler ?? throw new ArgumentNullException(nameof(messageHandler));
+        this.bufferPtr = bufferPtr;
     }
 
     /// <summary>
@@ -52,6 +58,16 @@ public sealed class WorkerService
     /// <exception cref="InvalidOperationException"></exception>
     public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
     {
+        var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
+        var receiver = Messaging.StaticMessageHandler.CreateNew(module);
+        config = config with
+        {
+            JSEnvironmentSetting = config.JSEnvironmentSetting with
+            {
+                MessageReceiverId = receiver.Id,
+            }
+        };
+
         if (config.JSEnvironmentSetting is null || config.WorkerInitializeSetting is null)
         {
             throw new InvalidOperationException("configs cannot be null.");
@@ -65,10 +81,10 @@ public sealed class WorkerService
             throw new InvalidOperationException($"{nameof(WorkerInitializeSetting)} is invalid. {message2}");
         }
 
-        var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
-        module.InvokeVoidUnmarshalledJson("Configure", config.JSEnvironmentSetting);
+        var buffer = module.InvokeUnmarshalledJson<IntPtr, JSEnvironmentSetting, int>("Configure", config.JSEnvironmentSetting, bufferLength);
+        receiver.SetBuffer(buffer, bufferLength);
 
-        WorkerService workerService = new(httpClient, jSRuntime, module, config);
+        WorkerService workerService = new(httpClient, jSRuntime, module, config, receiver, buffer);
         return workerService;
     }
 
@@ -79,7 +95,7 @@ public sealed class WorkerService
     /// <exception cref="InvalidOperationException"></exception>
     public Worker CreateWorker()
     {
-        var worker = new Worker(jSRuntime, module, config.WorkerInitializeSetting);
+        var worker = new Worker(jSRuntime, module, config.WorkerInitializeSetting, bufferPtr, bufferLength, messageHandler);
         return worker;
     }
 }

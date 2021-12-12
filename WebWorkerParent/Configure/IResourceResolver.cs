@@ -1,4 +1,4 @@
-﻿namespace WebWorkerParent.Configure;
+﻿namespace BlazorTask.Configure;
 
 public interface IResourceResolver
 {

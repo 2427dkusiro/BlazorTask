@@ -1,4 +1,4 @@
-﻿namespace WebWorkerParent.Tasks;
+﻿namespace BlazorTask.Tasks;
 
 public sealed class SerializedCallWorkerTask : WorkerTask
 {
@@ -38,6 +38,7 @@ public sealed class SerializedCallWorkerTask : WorkerTask
                 _ = module.InvokeUnmarshalled<int, int, uint, object?>("SCall", workerId, sizeof(nint) * 4, callId++);
             }
         }
+        workerAwaiter.SetResult();
     }
 
     protected override void BlockingInvoke()

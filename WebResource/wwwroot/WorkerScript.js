@@ -34,16 +34,27 @@ let dotnetAssemblies;
 let useCache;
 
 // When undefined, use browser provided locale string.
-let dotnetCulture = undefined;
+/** @type string */
+let dotnetCulture;
 
 // When undefined, use browser provided timezone string.
-let timeZoneString = undefined;
+/** @type string */
+let timeZoneString;
 
-let timeZoneFileName = "dotnet.timezones.blat";
+/** @type string */
+let timeZoneFileName;
+
+/** @type string */
+let messageHandlerMethodFullName
+
+/** @type string */
+let createMessageReceiverMethodFullName;
+
+let bufferLength = 256;
 
 let decoderModule;
 
-let jsTextDecoderModule;
+let interopModule;
 
 self.onmessage = (/** @type MessageEvent */ eventArg) => {
     self.onmessage = OnMessageReceived;
@@ -58,10 +69,9 @@ self.onmessage = (/** @type MessageEvent */ eventArg) => {
  */
 function ConfigureThis(eventArg) {
     const array = new Uint8Array(eventArg.data[0], 0);
-    const str = array.length > nativeLen ? nativeDecoder.decode(array) : jsTextDecoderModule.Decode(array);
 
     /**@type WorkerInitializeSetting */
-    const setting = JSON.parse(str);
+    const setting = JSON.parse((new TextDecoder()).decode(array));
     basePath = setting.BasePath;
     jsExecutePath = setting.JSExecutePath;
     frameworkDirName = setting.FrameworkDirName;
@@ -70,8 +80,12 @@ function ConfigureThis(eventArg) {
     dotnetWasmName = setting.DotnetWasmName;
     resourceDecoderPath = setting.ResourceDecoderPath;
     resourceDecodeMathodName = setting.ResourceDecodeMathodName;
-    resourceSuffix = setting.ResourcePrefix;
+    resourceSuffix = setting.ResourceSuffix
     useCache = setting.UseResourceCache;
+    dotnetCulture = setting.DotnetCulture;
+    timeZoneFileName = setting.TimeZoneFileName;
+    messageHandlerMethodFullName = setting.MessageHandlerMethodFullName;
+    createMessageReceiverMethodFullName = setting.CreateMessageReceiverMethodFullName;
     dotnetAssemblies = setting.Assemblies;
 
     if (dotnetCulture == undefined) {
@@ -87,7 +101,7 @@ function ConfigureThis(eventArg) {
  * @returns {Promise<void>} 
  */
 async function ImportModules() {
-    jsTextDecoderModule = await import("./TextDecoder.js");
+    interopModule = await import("./DotnetInterop.js");
     if (resourceDecoderPath != null) {
         decoderModule = await import(BuildPath(resourceDecoderPath));
     }
@@ -246,24 +260,7 @@ async function PreRun() {
     });
 
     await LoadTimezone(timeZoneFileName);
-
-    const icuFileName = Module.mono_wasm_get_icudt_name(dotnetCulture);
-    console.log(icuFileName);
-    addRunDependency(`blazor:icudata`);
-    const icuData = await FetchResource(icuFileName);
-    if (icuData == null) {
-        removeRunDependency(`blazor:icudata`);
-        useInvariantCulture = true;
-        MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
-        console.warn("Failed to fetch icu data. Fall back to use invariant culture.");
-    } else {
-        const heapAddress = Module._malloc(icuData.length);
-        const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, icuData.length);
-        heapMemory.set(icuData);
-        _mono_wasm_load_icu_data(heapAddress);
-        MONO.loaded_files.push(icuFileName);
-        removeRunDependency(`blazor:icudata`);
-    }
+    await LoadICUData(dotnetCulture);
 }
 
 let useInvariantCulture = false;
@@ -283,46 +280,7 @@ function PostRun() {
     _mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
-    postMessage("_init");
-}
-
-let receiver;
-/**
- * Initialize message dispatch service here. You can call .NET method here.
- * @private
- * @returns {void}
- * */
-function InitializeMessagingService() {
-    receiver = Module.mono_bind_static_method("[SampleWorkerAssembly]SampleWorkerAssembly.Hoge:HogeFuga");
-}
-
-/**
- * Handles message from parent. 
- * @private
- * @param {MessageEvent} message message from parent
- * @returns {void}
- */
-function OnMessageReceived(message) {
-    const type = message.data.t;
-    const data = message.data.d;
-
-    switch (type) {
-        case "SCall":
-            const name = new Uint8Array(data[0]);
-            const arg = new Uint8Array(data[1]);
-
-            const buffer1 = Module._malloc(name.length);
-            const array1 = new Uint8Array(Module.HEAPU8.buffer, buffer1, name.length);
-            array1.set(name);
-
-            const buffer2 = Module._malloc(arg.length);
-            const array2 = new Uint8Array(Module.HEAPU8.buffer, buffer2, arg.length);
-            array2.set(arg);
-
-            receiver(buffer1, name.length, buffer2, arg.length);
-
-            return;
-    }
+    postMessage({ t: "Init" });
 }
 
 // #region typedef
@@ -338,8 +296,13 @@ function OnMessageReceived(message) {
  * @property {string} DotnetWasmName
  * @property {string} ResourceDecoderPath
  * @property {string} ResourceDecodeMathodName
- * @property {string} ResourcePrefix
+ * @property {string} ResourceSuffix
  * @property {boolean} UseResourceCache
+ * @property {string} DotnetCulture
+ * @property {string} TimeZoneString
+ * @property {string} TimeZoneFileName
+ * @property {string} MessageHandlerMethodFullName
+ * @property {string} CreateMessageReceiverMethodFullName
  * @property {string[]} Assemblies
  * */
 
@@ -385,11 +348,36 @@ function BuildPath(name) {
 }
 
 /**
+ * Load ICU data.
+ * @param {string} culture Culture name such as 'en-US' 'ja-JP'
+ * @returns {Promise<void>}
+ */
+async function LoadICUData(culture) {
+    const icuFileName = Module.mono_wasm_get_icudt_name(culture);
+    addRunDependency(`blazor:icudata`);
+    const icuData = await FetchResource(icuFileName);
+    if (icuData == null) {
+        removeRunDependency(`blazor:icudata`);
+        useInvariantCulture = true;
+        MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
+        console.warn("Failed to fetch icu data. Fall back to use invariant culture.");
+    } else {
+        const heapAddress = Module._malloc(icuData.length);
+        const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, icuData.length);
+        heapMemory.set(icuData);
+        _mono_wasm_load_icu_data(heapAddress);
+        MONO.loaded_files.push(icuFileName);
+        removeRunDependency(`blazor:icudata`);
+    }
+}
+
+/**
  * Load timezone data.
  * @param {string} name File Name 
  * @returns {Promise<void>}
  */
-async function LoadTimezone(name){
+// See MonoPlatform.cs line 543
+async function LoadTimezone(name) {
     const runDependencyId = `blazor:timezonedata`;
     addRunDependency(runDependencyId);
 
@@ -430,8 +418,6 @@ async function FetchResource(fileName) {
     /** @type Response */
     let responce;
 
-    /** @type Uint8Array | Int8Array */
-    let data;
     if (resourceDecoderPath != null) {
         responce = await fetch(BuildFrameworkPath(fileName) + resourceSuffix);
     } else {
@@ -512,17 +498,39 @@ async function SearchCache(fileName) {
     return await resourceCache.match(key);
 }
 
-const dotnetArrayOffset = 16; // offset of dotnet array from reference to binary data in bytes.
-const nativeLen = 512; // threathold of using native text decoder(for short string, using js-implemented decoder is faster.)
-const nativeDecoder = new TextDecoder();
+// #region Messaging
+let interop;
+
 /**
- * Parse Json encorded as UTF-8 Text
- * @param {number} ptr pointer to utf-8 string which is json serialized init options.
- * @param {number} len length of json data in bytes.
- * @returns {any}
+ * Initialize message dispatch service here. You can call .NET method here.
+ * @private
+ * @returns {void}
+ * */
+function InitializeMessagingService() {
+    interop = new interopModule.Interop(bufferLength, createMessageReceiverMethodFullName, undefined, messageHandlerMethodFullName);
+}
+
+/**
+ * Handles message from parent. 
+ * @private
+ * @param {MessageEvent} message message from parent
+ * @returns {void}
  */
-function DecodeUTF8JSON(ptr, len) {
-    const array = new Uint8Array(wasmMemory.buffer, ptr + dotnetArrayOffset, len);
-    const str = len > nativeLen ? nativeDecoder.decode(array) : jsTextDecoderModule.Decode(array);
-    return JSON.parse(str);
+function OnMessageReceived(message) {
+    interop.HandleMessage(message, 0);
+    return;
+}
+
+/**
+ * Return not void result or exception.
+ * */
+function ReturnResult() {
+    interop.ReturnResult();
+}
+
+/**
+ * Return void result.
+ * */
+function ReturnVoidResult() {
+    interop.ReturnVoidResult();
 }
