@@ -15,12 +15,12 @@ public record JSEnvironmentSetting
 
     private static JSEnvironmentSetting CreateDefault()
     {
-        var type = typeof(Messaging.StaticMessageHandler);
+        var type = typeof(Messaging.MessageHandlerManager);
         return new JSEnvironmentSetting()
         {
             ParentScriptPath = DefaultSettings.DefaultParentScriptPath,
             WorkerScriptPath = DefaultSettings.DefaultWorkerScriptPath,
-            MessageReceiverFullName = $"[{type.Assembly.GetName().Name}]{type.FullName}:{nameof(Messaging.StaticMessageHandler.ReceiveMessage)}",
+            MessageReceiverFullName = $"[{type.Assembly.GetName().Name}]{type.FullName}:{nameof(Messaging.MessageHandlerManager.ReceiveMessage)}",
         };
     }
 
@@ -33,8 +33,6 @@ public record JSEnvironmentSetting
     /// Get a javascript path which will be pass to worker. 
     /// </summary>
     public string? WorkerScriptPath { get; init; }
-
-    public int MessageReceiverId { get; init; } = -1;
 
     public string? MessageReceiverFullName { get; init; }
 
@@ -49,11 +47,6 @@ public record JSEnvironmentSetting
         if (mustNotEmpty.Any(str => string.IsNullOrEmpty(str)))
         {
             message = $"Some required properties are null or empty.";
-            return false;
-        }
-        if (MessageReceiverId == -1)
-        {
-            message = "Must set message receiver id.";
             return false;
         }
 

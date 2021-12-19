@@ -77,11 +77,24 @@ public class Worker : IAsyncDisposable
     /// <param name="methodInfo">method to call.</param>
     /// <param name="args">Arguments to pass to worker. This arguments will be json-serialized.</param>
     /// <returns></returns>
-    public SerializedCallWorkerTask Call(MethodInfo methodInfo, params object?[] args)
+    public WorkerTask Call(MethodInfo methodInfo, params object?[] args)
     {
         var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(args);
         var name = GetMethodName(methodInfo);
         return SerializedCall(name, json);
+    }
+
+    /// <summary>
+    /// Call a method at the worker context.
+    /// </summary>
+    /// <param name="methodInfo">method to call.</param>
+    /// <param name="args">Arguments to pass to worker. This arguments will be json-serialized.</param>
+    /// <returns></returns>
+    public WorkerTask<T> Call<T>(MethodInfo methodInfo, params object?[] args)
+    {
+        var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(args);
+        var name = GetMethodName(methodInfo);
+        return SerializedCall<T>(name, json);
     }
 
     private static string GetMethodName(MethodInfo methodInfo)
@@ -93,6 +106,11 @@ public class Worker : IAsyncDisposable
 
     private SerializedCallWorkerTask SerializedCall(string methodName, byte[] arg)
     {
-        return new SerializedCallWorkerTask(jSRuntime, module, methodName, arg, workerId, buffer);
+        return new SerializedCallWorkerTask(jSRuntime, module, methodName, arg, workerId, buffer, bufferLength, messageHandler);
+    }
+
+    private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
+    {
+        return new SerializedCallWorkerTask<T>(jSRuntime, module, methodName, arg, workerId, buffer, bufferLength, messageHandler);
     }
 }

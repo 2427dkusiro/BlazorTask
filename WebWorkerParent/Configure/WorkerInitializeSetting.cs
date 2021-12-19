@@ -10,7 +10,7 @@ public record WorkerInitializeSetting
 {
     private static WorkerInitializeSetting? defaultInstance;
 
-    private static readonly Type messageHandler = typeof(Messaging.StaticMessageHandler);
+    private static readonly Type messageHandler = typeof(Messaging.MessageHandlerManager);
 
     /// <summary>
     /// Get a singleton which represents default setting. Use with expression to build setting.
@@ -32,8 +32,8 @@ public record WorkerInitializeSetting
             DotnetCulture = null,
             TimeZoneString = null,
             TimeZoneFileName = "dotnet.timezones.blat",
-            MessageHandlerMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.StaticMessageHandler.ReceiveMessage)}",
-            CreateMessageReceiverMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.StaticMessageHandler.JSCreateNew)}",
+            MessageHandlerMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.ReceiveMessage)}",
+            CreateMessageReceiverMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.CreateAtThisContext)}",
             Assemblies = null,
         };
     }

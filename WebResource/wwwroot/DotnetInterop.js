@@ -8,21 +8,21 @@ const dataBufferDefaultLength = 1024;
 export class Interop {
 
     /**
-     * Create a new instance of Interop class.
+     * 
+     * @param {boolean} isFromParent
      * @param {number} generalBufferLength
-     * @param {string} getReceiverMethodName
-     * @param {number} receiverId
      * @param {string} receiverName
+     * @param {string} getReceiverMethodName
      */
-    constructor(generalBufferLength, getReceiverMethodName, receiverId, receiverName) {
-        if (getReceiverMethodName == null) {
+    constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName) {
+        if (isFromParent) {
             if (generalBufferLength == undefined) {
                 generalBufferLength = defaultGeneralBufferLength;
             }
             this.generalBufferLength = generalBufferLength;
             this.generalBufferAddr = globalThis.Module._malloc(generalBufferLength);
 
-            this.dotnetReceiverId = receiverId;
+            this.dotnetReceiverId = 2; // Enum:WorkerContext
             this.dotnetReceiver = globalThis.Module.mono_bind_static_method(receiverName);
         } else {
             if (generalBufferLength == undefined) {
@@ -36,22 +36,35 @@ export class Interop {
         }
     }
 
-    /** @type number */
+    /** @type number 
+     *  @private
+     */
     dotnetReceiverId;
 
-    /** @type function(number,string,number) : void */
+    /** @type function(number,string,number) : void 
+     *  @private
+     * 
+     */
     dotnetReceiver;
 
-    /** @type number */
+    /** @type number 
+     *  @private
+     */
     generalBufferAddr;
 
-    /** @type number */
+    /** @type number 
+     *  @private
+     */
     generalBufferLength;
 
-    /** @type number */
+    /** @type number 
+     *  @private
+     */
     dataBufferAddr;
 
-    /** @type number */
+    /** @type number 
+     *  @private
+     */
     dataBufferLength;
 
     /**
@@ -79,9 +92,9 @@ export class Interop {
     HandleMessage(message, sourceId) {
         /** @type string */
         const type = message.data.t;
-
         /** @type number */
         const messageId = message.data.i;
+        /** @type ArrayBuffer[] */
         const data = message.data.d;
 
         switch (type) {
@@ -94,27 +107,38 @@ export class Interop {
                 const jsonArg = new Uint8Array(data[1]);
                 const totalLength = name.length + jsonArg.length;
 
-                const bufferArray = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+                const bufferArray_s = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
 
-                bufferArray[0] = 0;
+                bufferArray_s[0] = 0;
                 this._EnsureDataBufferLength(totalLength);
-                const dataArray = new Uint8Array(globalThis.wasmMemory.buffer, this.dataBufferAddr, this.dataBufferLength);
+                const dataArray_s = new Uint8Array(globalThis.wasmMemory.buffer, this.dataBufferAddr, this.dataBufferLength);
 
-                dataArray.set(name, 0);
-                bufferArray[1] = this.dataBufferAddr;
-                bufferArray[2] = name.length;
+                dataArray_s.set(name, 0);
+                bufferArray_s[1] = this.dataBufferAddr;
+                bufferArray_s[2] = name.length;
 
-                dataArray.set(jsonArg, name.length);
-                bufferArray[3] = this.dataBufferAddr + name.length;
-                bufferArray[4] = jsonArg.length;
-                bufferArray[0] = 20;
+                dataArray_s.set(jsonArg, name.length);
+                bufferArray_s[3] = this.dataBufferAddr + name.length;
+                bufferArray_s[4] = jsonArg.length;
+                bufferArray_s[0] = 20;
 
                 this.dotnetReceiver(this.dotnetReceiverId, "SCall", messageId);
                 return;
 
             case "Res":
-                const array = new Int32Array(data);
-                console.log(array);
+                const array = new Int32Array(data[0], 0, 1);
+                const len = array[0];
+                this._EnsureDataBufferLength(len);
+
+                const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+                bufferArray_r[0] = 0;
+                bufferArray_r[1] = this.dataBufferAddr;
+                bufferArray_r[2] = len;
+                bufferArray_r[0] = 12;
+
+                const dataArray_r = new Uint8Array(wasmMemory.buffer, this.dataBufferAddr, this.dataBufferLength);
+                dataArray_r.set(new Int8Array(data[0], 0), 0);
+                this.dotnetReceiver(this.dotnetReceiverId, "Res", sourceId);
                 return;
         }
     }
@@ -130,24 +154,28 @@ export class Interop {
         }
         const resultPtr = bufferArray[3];
         const resultLen = bufferArray[4];
+        const resultArray = new Uint8Array(wasmMemory.buffer, resultPtr, resultLen);
 
-        const data = new Uint8Array(8 + resultLen);
-        data.set(bufferArray.subarray(1, 2), 0);
-        data.set(wasmMemory.buffer.slice(resultPtr, resultPtr + resultLen), 8);
+        const payload = new Int32Array(1);
+        payload[0] = resultLen + 12;
 
-        postMessage({ t: "Res", d: data.buffer }, null, [data.buffer]);
+        const data = new Uint8Array(12 + resultLen);
+        data.set(payload, 0);
+        data.set(new Uint8Array(wasmMemory.buffer, this.generalBufferAddr + 4, 8), 4);
+        data.set(resultArray, 12);
+        postMessage({ t: "Res", d: [data.buffer] }, null, [data.buffer]);
     }
 
     /**
      * Return void result.
      * */
     ReturnVoidResult() {
-        const bufferArray = new Int32Array(wasmMemory.buffer, this.generalBufferAddr, 1);
+        const bufferArray = new Int32Array(wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
         if (bufferArray[0] < 12) {
             throw new Error("Buffer too short.");
         }
-        const arrayBuf = wasmMemory.buffer.slice(this.generalBufferAddr + 4, this.generalBufferAddr + 12);
-        postMessage({ t: "Res", d: arrayBuf }, null, [arrayBuf]);
+        const arrayBuf = wasmMemory.buffer.slice(this.generalBufferAddr, this.generalBufferAddr + 12);
+        postMessage({ t: "Res", d: [arrayBuf] }, null, [arrayBuf]);
     }
 
     /**

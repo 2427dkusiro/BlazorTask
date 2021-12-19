@@ -4,8 +4,10 @@ namespace BlazorTask.WorkerImplements.JSRuntime;
 
 internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalledRuntime
 {
-    public static WorkerJSRuntime Singleton { get; } = new WorkerJSRuntime();
+    private static WorkerJSRuntime? _singleton;
 
+    // Warn: Getting JSRuntime from static constructor causes runtime crash!!
+    public static WorkerJSRuntime Singleton { get => _singleton ??= new WorkerJSRuntime(); }
     private readonly int self;
 
     public WorkerJSRuntime()

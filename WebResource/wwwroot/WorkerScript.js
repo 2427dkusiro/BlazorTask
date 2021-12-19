@@ -507,7 +507,7 @@ let interop;
  * @returns {void}
  * */
 function InitializeMessagingService() {
-    interop = new interopModule.Interop(bufferLength, createMessageReceiverMethodFullName, undefined, messageHandlerMethodFullName);
+    interop = new interopModule.Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName);
 }
 
 /**

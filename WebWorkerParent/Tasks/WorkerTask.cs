@@ -35,6 +35,7 @@ namespace BlazorTask.Tasks
         public bool IsCompleted { get; set; }
 
         private Action? action;
+        private Exception? exception;
 
         public void OnCompleted(Action action)
         {
@@ -47,6 +48,11 @@ namespace BlazorTask.Tasks
 
         public void GetResult()
         {
+            if (exception is not null)
+            {
+                throw exception;
+            }
+
             if (IsCompleted)
             {
                 return;
@@ -62,6 +68,13 @@ namespace BlazorTask.Tasks
             IsCompleted = true;
             action?.Invoke();
         }
+
+        public void SetException(Exception exception)
+        {
+            IsCompleted = true;
+            this.exception = exception;
+            action?.Invoke();
+        }
     }
 
     public class WorkerAwaiter<T> : INotifyCompletion
@@ -69,6 +82,7 @@ namespace BlazorTask.Tasks
         public bool IsCompleted { get; set; }
 
         private Action? action;
+        private Exception? exception;
         private T result;
 
         public void OnCompleted(Action action)
@@ -82,6 +96,11 @@ namespace BlazorTask.Tasks
 
         public T GetResult()
         {
+            if (exception is not null)
+            {
+                throw exception;
+            }
+
             if (IsCompleted)
             {
                 return result;
@@ -96,6 +115,13 @@ namespace BlazorTask.Tasks
         {
             IsCompleted = true;
             this.result = result;
+            action?.Invoke();
+        }
+
+        public void SetException(Exception exception)
+        {
+            IsCompleted = true;
+            this.exception = exception;
             action?.Invoke();
         }
     }

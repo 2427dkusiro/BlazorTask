@@ -20,6 +20,7 @@ internal static class ILMethodBuilder
 
     private static MethodInfo? _returnVoid;
     private static MethodInfo? _returnSerialized;
+    private static MethodInfo? _returnException;
 
     /// <summary>
     /// Build a delegate to call method from serialized argument.
@@ -46,6 +47,7 @@ internal static class ILMethodBuilder
         }
         var lable1 = generator.DefineLabel();
         var lable2 = generator.DefineLabel();
+        var label3 = generator.DefineLabel();
 
         generator.Emit(Ldarg_0);
         generator.Emit(Dup);
@@ -71,22 +73,30 @@ internal static class ILMethodBuilder
             var method = deserializeMethod.MakeGenericMethod(paramTypes[i]);
             generator.Emit(Call, method);
         }
-        generator.Emit(Call, methodInfo);
 
+        generator.BeginExceptionBlock();
+        generator.Emit(Call, methodInfo);
         if (methodInfo.ReturnType != typeof(void))
         {
             generator.Emit(Stloc_1);
         }
-        generator.Emit(Leave_S, lable2);
+        // generator.Emit(Leave_S, lable2);
+
         // throw ex;
-        generator.Emit(Pop);
-        // result
+        generator.BeginCatchBlock(typeof(Exception));
+        generator.Emit(Ldarg_1);
+        var exMethod = _returnException ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnException))
+            ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnException)}' method");
+        generator.Emit(Call, exMethod);
+        // generator.Emit(Leave_S, label3);
+        // not exception result
+        generator.EndExceptionBlock();
         generator.MarkLabel(lable2);
         if (methodInfo.ReturnType == typeof(void))
         {
             generator.Emit(Ldarg_1);
 
-            var method = _returnVoid ??= typeof(StaticMessageHandler).GetMethod(nameof(StaticMessageHandler.ReturnResultVoid))
+            var method = _returnVoid ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultVoid))
                 ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandler.ReturnResultVoid)}' method.");
             generator.Emit(Call, method);
         }
@@ -95,10 +105,11 @@ internal static class ILMethodBuilder
             generator.Emit(Ldloc_1);
             generator.Emit(Ldarg_1);
 
-            var method = _returnSerialized ??= typeof(StaticMessageHandler).GetMethod(nameof(StaticMessageHandler.ReturnResultSerialized))
-               ?? throw new InvalidOperationException($"Failed to find '{nameof(StaticMessageHandler.ReturnResultSerialized)}' method.");
+            var method = _returnSerialized ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultSerialized))
+               ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnResultSerialized)}' method.");
             generator.Emit(Call, method.MakeGenericMethod(methodInfo.ReturnType));
         }
+        generator.MarkLabel(label3);
         generator.Emit(Ret);
 
         return dynamicMethod.CreateDelegate<Action<object[], long>>();

@@ -2,11 +2,19 @@
 {
     public class Hoge
     {
-        public static void Fuga(int n, DateTime time)
+        public static void Empty()
         {
-            Console.WriteLine(n);
-            TimeSpan delay = DateTime.Now - time;
-            Console.WriteLine(delay.TotalMilliseconds + "ms");
+
+        }
+
+        public static int Add(int a, int b)
+        {
+            return a + b;
+        }
+
+        public static void Exception()
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -59,14 +59,8 @@ public sealed class WorkerService
     public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
     {
         var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
-        var receiver = Messaging.StaticMessageHandler.CreateNew(module);
-        config = config with
-        {
-            JSEnvironmentSetting = config.JSEnvironmentSetting with
-            {
-                MessageReceiverId = receiver.Id,
-            }
-        };
+        var receiverId = Messaging.MessageHandlerManager.CreateAtWorkerModuleContext(module);
+        var receiver = Messaging.MessageHandlerManager.GetHandler(receiverId);
 
         if (config.JSEnvironmentSetting is null || config.WorkerInitializeSetting is null)
         {

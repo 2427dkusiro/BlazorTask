@@ -6,7 +6,6 @@ import { DecodeUTF8AsJSON, DecodeUTF8String } from "./DotnetInterop.js";
  * @typedef EnvironmentSettings
  * @property {string} WorkerScriptPath
  * @property {string} MessageReceiverFullName
- * @property {number} MessageReceiverId
  * */
 /*
  * @property {string} AssemblyName
@@ -36,20 +35,21 @@ let interop;
 export function Configure(jsonPtr, jsonLen, bufferLen) {
     /** @type EnvironmentSettings */
     const settings = DecodeUTF8AsJSON(jsonPtr, jsonLen);
-    workerScriptUrl = settings.WorkerScriptPath;
-    dotnetMessageReceiverId = settings.MessageReceiverId;
-    dotnetMessageRecieverFullName = settings.MessageReceiverFullName;
-    interop = new Interop(bufferLen, null, dotnetMessageReceiverId, dotnetMessageRecieverFullName);
+    const _workerScriptUrl = settings.WorkerScriptPath;
+    if (workerScriptUrl != undefined && workerScriptUrl != _workerScriptUrl) {
+        throw new Error("Different worker script url was passed.");
+    }
+    workerScriptUrl = _workerScriptUrl;
+    const dotnetMessageRecieverFullName = settings.MessageReceiverFullName;
+    if (interop != undefined) {
+        console.error("Interop overwrite.");
+    }
+    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null);
     return interop.generalBufferAddr;
 }
 
 /** @type string */
 let workerScriptUrl;
-
-let dotnetMessageReceiverId;
-
-/** @type string */
-let dotnetMessageRecieverFullName;
 
 /**
  * Create a new worker then init worker.

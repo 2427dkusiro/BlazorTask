@@ -4,53 +4,12 @@ using System.Text.Json;
 
 namespace BlazorTask.Messaging
 {
-    public static class StaticMessageHandler
-    {
-        private static int handlerId = 0;
-
-        private static readonly Dictionary<int, MessageHandler> handlers = new();
-
-        public static int JSCreateNew(int buffer, int bufferLength)
-        {
-            var handler = new WorkerMessageHandler(handlerId);
-            handler.SetBuffer((nint)buffer, bufferLength);
-            handlers.Add(handlerId++, handler);
-            return handler.Id;
-        }
-
-        public static MessageHandler CreateNew(IJSUnmarshalledObjectReference module)
-        {
-            var handler = new WindowMessageHandler(handlerId, module);
-            handlers.Add(handlerId++, handler);
-            return handler;
-        }
-
-        public static void ReceiveMessage(int targetHandler, string type, int id)
-        {
-            handlers[targetHandler].ReceiveMessage(type, id);
-        }
-
-        public static void ReturnResultVoid(long id)
-        {
-            var insId = (int)(id >> 32);
-            var id2 = (int)(id & uint.MaxValue);
-            handlers[insId].ReturnResultVoid(id2);
-        }
-
-        public static void ReturnResultSerialized<T>(T value, long id)
-        {
-            var insId = (int)(id >> 32);
-            var id2 = (int)(id & uint.MaxValue);
-            handlers[insId].ReturnResultSerialized(value, id2);
-        }
-    }
-
     public abstract class MessageHandler
     {
         private IntPtr buffer;
         private int bufferLength;
 
-        public int Id { get; protected set; }
+        public HandlerId Id { get; protected set; }
 
         protected abstract void JSInvokeVoid(string name);
 
@@ -66,25 +25,37 @@ namespace BlazorTask.Messaging
             workerInitAwaiters.Add(id, awaiter);
         }
 
+        private readonly Dictionary<int, ICallResultToken> callResultTokens = new();
+        public void RegisterCallResultToken(int callId, ICallResultToken token)
+        {
+            callResultTokens.Add(callId, token);
+        }
+
         public void ReceiveMessage(string type, int id)
         {
             switch (type)
             {
                 case "Init":
-                    Console.WriteLine("Init:" + id.ToString());
-                    // 連打すると二回来ちゃうっぽい
-                    workerInitAwaiters[id].SetResult();
-                    workerInitAwaiters.Remove(id);
+                    OnReceiveInitialized(id);
                     return;
                 case "SCall":
-                    long callId = ((long)Id << 32) + id;
-                    CallStaticSerialized(callId);
+                    OnReceiveCallStaticSerialized(id);
+                    return;
+                case "Res":
+                    OnReceiveResult(id);
                     return;
             }
         }
 
-        public unsafe void CallStaticSerialized(long callId)
+        internal void OnReceiveInitialized(int id)
         {
+            workerInitAwaiters[id].SetResult();
+            workerInitAwaiters.Remove(id);
+        }
+
+        internal unsafe void OnReceiveCallStaticSerialized(int id)
+        {
+            long callId = ((long)Id << 32) + id;
             int* ptr = (int*)buffer.ToPointer();
             int length = ptr[0];
             if (length < 20)
@@ -98,6 +69,36 @@ namespace BlazorTask.Messaging
             int argLength = ptr[4];
 
             WorkerImplements.Dispatch.SerializedDispatcher.CallStatic(new Span<char>((void*)nameAddr, nameLength / sizeof(char)), new Span<byte>((void*)argAddr, argLength), callId);
+        }
+
+        internal unsafe void OnReceiveResult(int workerId)
+        {
+            int* bufferPtr = (int*)buffer.ToPointer();
+            int bufferpayload = bufferPtr[0];
+            if (bufferpayload < 12)
+            {
+                throw new InvalidOperationException("buffer too short.");
+            }
+            int dataAddr = bufferPtr[1];
+            int dataLen = bufferPtr[2];
+
+            int* dataPtr = (int*)dataAddr;
+            int payload = dataPtr[0];
+            int callId = dataPtr[1];
+            int resultType = dataPtr[2];
+
+            switch (resultType)
+            {
+                case 0:
+                    callResultTokens[callId].SetResultFromJson(null);
+                    return;
+                case 2:
+                    callResultTokens[callId].SetResultFromJson(new Span<byte>(dataPtr + 3, payload - 12));
+                    return;
+                case 4:
+                    callResultTokens[callId].SetException(new Span<byte>(dataPtr + 3, payload - 12));
+                    return;
+            }
         }
 
         public unsafe void ReturnResultVoid(int id)
@@ -118,43 +119,103 @@ namespace BlazorTask.Messaging
             fixed (void* jsonPtr = json)
             {
                 ptr[1] = id;
-                ptr[2] = 1;
+                ptr[2] = 2;
                 ptr[3] = (int)jsonPtr;
                 ptr[4] = json.Length;
                 ptr[0] = 20;
-                JSInvokeVoid("ReturnSerializedResult");
+                JSInvokeVoid("ReturnResult");
+            }
+        }
+
+        public unsafe void ReturnException(Exception exception, int id)
+        {
+            var ptr = (int*)buffer.ToPointer();
+            ptr[0] = 0;
+            var json = JsonSerializer.SerializeToUtf8Bytes(exception);
+            fixed (void* jsonPtr = json)
+            {
+                ptr[1] = id;
+                ptr[2] = 4;
+                ptr[3] = (int)jsonPtr;
+                ptr[4] = json.Length;
+                ptr[0] = 20;
+                JSInvokeVoid("ReturnResult");
             }
         }
     }
-
-    public class WorkerMessageHandler : MessageHandler
-    {
-        private readonly WorkerImplements.JSRuntime.WorkerJSRuntime workerJSRuntime; // = WorkerImplements.JSRuntime.WorkerJSRuntime.Singleton;
-
-        public WorkerMessageHandler(int id)
-        {
-            Id = id;
-        }
-
-        protected override void JSInvokeVoid(string name)
-        {
-            _ = workerJSRuntime.InvokeUnmarshalled<object?>(name);
-        }
-    }
-
-    public class WindowMessageHandler : MessageHandler
-    {
-        private readonly IJSUnmarshalledObjectReference module;
-
-        public WindowMessageHandler(int id, IJSUnmarshalledObjectReference jSUnmarshalledObjectReference)
-        {
-            module = jSUnmarshalledObjectReference;
-            Id = id;
-        }
-
-        protected override void JSInvokeVoid(string name)
-        {
-            module.InvokeUnmarshalled<object?>(name);
-        }
-    }
 }
+
+/**
+ * Worker Messaging Protocol
+ * 
+ * Message has the type such as "Init" , "SCall"...
+ * Type provide the definition of the way to transfer data.
+ * 
+ * Message body is JS object.(or null)
+ *  field "t" : message Type. 
+ *  field "d" : transfer Data(option).
+ *  field "i" : message Id(option).
+ *  
+ * For JS<=>C# interop, use 2 buffer.
+ *  general buffer: fixed size buffer to put interop argumetnts.
+ *  data buffer: flex size buffer to put data.
+ * These buffer is instance-shared. And first 4 byte must be payload length not to read unexpected field.
+ * 
+ * Init : Worker => Parent
+ *  Notify worker INITialization completed. This message has no body.
+ * 
+ * SCall : Parent => Worker 
+ *  CALL method from Serialized arguments.
+ *  Body:
+ *   i:number method call ID.
+ *   d:arrayBuffer[]
+ *    [0]:arrayBuffer UTF-16 encoded method mame string. 
+ *    [1]:arrayBuffer UTF-8 encoded json arguments.
+ *       
+ *  C#=>JS: Use general buffer 20 bytes.
+ *   [0]:Int32 payload length(20).
+ *   [1]:Int32 pointer to method name string.
+ *   [2]:Int32 method name length in bytes.(2x larger than string length)
+ *   [3]:Int32 pointer to json arguments.
+ *   [4]:Int32 json arguments length in bytes.
+ *   
+ *  JS=>C#: Use general buffer 20 bytes and use data buffer.
+ *   general buffer(same to C#=>JS):
+ *    [0]:Int32 payload length(20).
+ *    [1]:Int32 pointer to method name string in data buffer.
+ *    [2]:Int32 method name length in bytes.(2x larger than string length)
+ *    [3]:Int32 pointer to json arguments in data buffer.
+ *    [4]:Int32 json arguments length in bytes. 
+ *   data buffer:
+ *    + method name.
+ *    + json args.
+ *    
+ * Res : Worker => Parent
+ *  Return method call RESult.
+ *  Body:
+ *   d:arraybuffer[]
+ *    [0]:Int32 payload size.
+ *    [1]:Int32 call ID.
+ *    [2]:Int32 result type. 
+ *     { 
+ *       0 = execution succeeded but returned nothing. 
+ *       1 = allocated.
+ *       2 = execution succeeded and returned json value.
+ *       3 = exception occured but no information.
+ *       4 = exception occured and re-throw it as json.
+ *     }
+ *    [3]:Any returned value.(flex length)
+ *    
+ *   C#=>JS:
+ *    when return void: use general buffer 12 bytes.
+ *     [0]:Int32 payload length.
+ *     [1]:Int32 call ID.
+ *     [2]:Int32 result type.
+ *
+ *    when return something: use general buffer 20 bytes.
+ *     [0]:Int32 payload length.
+ *     [1]:Int32 call ID.
+ *     [2]:Int32 result type.
+ *     [3]:Int32 pointer to return value.
+ *     [4]:Int32 return value length.
+ */
