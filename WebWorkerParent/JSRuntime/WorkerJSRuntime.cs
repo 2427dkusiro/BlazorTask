@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace BlazorTask.WorkerImplements.JSRuntime;
+namespace BlazorTask.JSRuntime;
 
 internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalledRuntime
 {

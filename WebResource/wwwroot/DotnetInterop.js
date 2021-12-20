@@ -160,7 +160,7 @@ export class Interop {
         payload[0] = resultLen + 12;
 
         const data = new Uint8Array(12 + resultLen);
-        data.set(payload, 0);
+        data.set(new Uint8Array(payload.buffer, 0, 4), 0);
         data.set(new Uint8Array(wasmMemory.buffer, this.generalBufferAddr + 4, 8), 4);
         data.set(resultArray, 12);
         postMessage({ t: "Res", d: [data.buffer] }, null, [data.buffer]);

@@ -59,6 +59,9 @@
 
         public static void ReturnResultSerialized<T>(T value, long id)
         {
+            Console.WriteLine($"return id={id.ToString("x")}");
+            Console.WriteLine(value);
+
             var handler = GetHandlerFromId((int)(id >> 32));
             var resultId = (int)(id & uint.MaxValue);
             GetHandler(handler).ReturnResultSerialized(value, resultId);

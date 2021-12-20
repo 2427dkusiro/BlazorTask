@@ -10,7 +10,7 @@ namespace BlazorTask;
 /// <summary>
 /// Represents a worker. 
 /// </summary>
-public class Worker : IAsyncDisposable
+public class Worker : IDisposable
 {
     private readonly WebAssemblyJSRuntime jSRuntime;
     private readonly IJSUnmarshalledObjectReference module;
@@ -38,6 +38,7 @@ public class Worker : IAsyncDisposable
     }
 
     private int workerId = -1;
+    private bool disposedValue;
 
     /// <summary>
     /// Start this worker.
@@ -59,16 +60,9 @@ public class Worker : IAsyncDisposable
     /// </summary>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    public Task Terminate()
+    public void Terminate()
     {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync()
-    {
-        //TODO: terminate worker and release related js resource.
-        throw new NotImplementedException();
+        module.InvokeUnmarshalled<int, object?>("TerminateWorker", workerId);
     }
 
     /// <summary>
@@ -112,5 +106,32 @@ public class Worker : IAsyncDisposable
     private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
     {
         return new SerializedCallWorkerTask<T>(jSRuntime, module, methodName, arg, workerId, buffer, bufferLength, messageHandler);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+
+            }
+            Terminate();
+
+            disposedValue = true;
+        }
+    }
+
+    ~Worker()
+    {
+        // このコードを変更しないでください。クリーンアップ コードを 'Dispose(bool disposing)' メソッドに記述します
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        // このコードを変更しないでください。クリーンアップ コードを 'Dispose(bool disposing)' メソッドに記述します
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

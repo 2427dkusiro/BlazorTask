@@ -1,9 +1,20 @@
 ﻿using BlazorTask.Configure;
 
+using Microsoft.JSInterop.WebAssembly;
+
 namespace BlazorTask;
 
 public class WorkerServiceConfigHelper
 {
+    public HttpClient HttpClient { get; }
+    public WebAssemblyJSRuntime JSRuntime { get; }
+
+    public WorkerServiceConfigHelper(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime)
+    {
+        HttpClient = httpClient;
+        JSRuntime = jSRuntime;
+    }
+
     private readonly Queue<Func<WorkerServiceConfig, WorkerServiceConfig>> syncFunc = new();
 
     private readonly Queue<Func<WorkerServiceConfig, Task<WorkerServiceConfig>>> asyncFunc = new();
@@ -44,7 +55,7 @@ public class WorkerServiceConfigHelper
 
 public record struct WorkerServiceConfig(JSEnvironmentSetting JSEnvironmentSetting, WorkerInitializeSetting WorkerInitializeSetting);
 
-public static class ConfigureExtentionMethod
+public static class ConfigureExtensionMethod
 {
     public static WorkerServiceConfigHelper ResolveResourcesFromBootJson(this WorkerServiceConfigHelper helper, HttpClient httpClient)
     {

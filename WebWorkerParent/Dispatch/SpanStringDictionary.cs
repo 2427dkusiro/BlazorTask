@@ -1,7 +1,8 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
-namespace BlazorTask.WorkerImplements;
+namespace BlazorTask.Dispatch;
 
 /// <summary>
 /// Represents a string-key dictionary accessable by <see cref="Span{char}"/>
@@ -33,7 +34,7 @@ internal class SpanStringDictionary<TValue>
     public SpanStringDictionary()
     {
         cap = 1 << capPow;
-        remMask = ~(uint.MaxValue << (capPow - 1));
+        remMask = ~(uint.MaxValue << capPow - 1);
         hashes = new int[cap];
         values = new HashTableEntry[cap];
     }
@@ -56,7 +57,7 @@ internal class SpanStringDictionary<TValue>
         while (index != 0)
         {
             ref var entry = ref values[index];
-            if (MemoryExtensions.SequenceEqual(key, entry.Key))
+            if (key.SequenceEqual(entry.Key))
             {
                 value = entry.Value;
                 return true;
@@ -103,7 +104,7 @@ internal class SpanStringDictionary<TValue>
 
         var hash = string.GetHashCode(key) & remMask;
         var index = hashes[hash];
-        if (index == 0 && (values[index].Key is null))
+        if (index == 0 && values[index].Key is null)
         {
             hashes[hash] = assigned;
             values[assigned++] = new HashTableEntry(new string(key), value);
@@ -116,7 +117,7 @@ internal class SpanStringDictionary<TValue>
             values[assigned++] = new HashTableEntry(new string(key), value);
             return;
         }
-        for (int i = 0; i < cap; i++)
+        for (var i = 0; i < cap; i++)
         {
             data = ref values[data.Next];
             if (data.Next == -1)
@@ -137,7 +138,7 @@ internal class SpanStringDictionary<TValue>
             throw new NotSupportedException("size too large.");
         }
         cap = 1 << capPow;
-        remMask = ~(uint.MaxValue << (capPow - 1));
+        remMask = ~(uint.MaxValue << capPow - 1);
         Array.Resize(ref hashes, cap);
         Array.Resize(ref values, cap);
     }

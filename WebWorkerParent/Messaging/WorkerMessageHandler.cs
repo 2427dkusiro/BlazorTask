@@ -2,7 +2,7 @@
 {
     public class WorkerMessageHandler : MessageHandler
     {
-        private WorkerImplements.JSRuntime.WorkerJSRuntime workerJSRuntime { get => WorkerImplements.JSRuntime.WorkerJSRuntime.Singleton; }
+        private JSRuntime.WorkerJSRuntime workerJSRuntime { get => JSRuntime.WorkerJSRuntime.Singleton; }
 
         public WorkerMessageHandler(HandlerId id)
         {

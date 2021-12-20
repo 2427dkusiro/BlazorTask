@@ -1,5 +1,7 @@
-﻿using BlazorTask.Tasks;
+﻿using BlazorTask.Dispatch;
+using BlazorTask.Tasks;
 
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace BlazorTask.Messaging
@@ -68,7 +70,7 @@ namespace BlazorTask.Messaging
             int argAddr = ptr[3];
             int argLength = ptr[4];
 
-            WorkerImplements.Dispatch.SerializedDispatcher.CallStatic(new Span<char>((void*)nameAddr, nameLength / sizeof(char)), new Span<byte>((void*)argAddr, argLength), callId);
+            SerializedDispatcher.CallStatic(new Span<char>((void*)nameAddr, nameLength / sizeof(char)), new Span<byte>((void*)argAddr, argLength), callId);
         }
 
         internal unsafe void OnReceiveResult(int workerId)
@@ -131,7 +133,8 @@ namespace BlazorTask.Messaging
         {
             var ptr = (int*)buffer.ToPointer();
             ptr[0] = 0;
-            var json = JsonSerializer.SerializeToUtf8Bytes(exception);
+            var wrapped = new WorkerException(exception.Message, exception.StackTrace, exception.Source, exception.GetType().FullName);
+            var json = JsonSerializer.SerializeToUtf8Bytes(wrapped);
             fixed (void* jsonPtr = json)
             {
                 ptr[1] = id;

@@ -13,6 +13,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\SampleWorkerAssembly\SampleWorkerAssembly.csproj" />
 	  <ProjectReference Include="..\WebResource\WebResource.csproj" />
 	</ItemGroup>
 

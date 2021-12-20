@@ -1,12 +1,12 @@
 ﻿using System.Reflection;
 using System.Text.Json;
 
-namespace BlazorTask.WorkerImplements.Dispatch;
+namespace BlazorTask.Dispatch;
 
 /// <summary>
 /// Provides method dispatching from json serialized arguments.
 /// </summary>
-internal class SerializedDispatcher
+public class SerializedDispatcher
 {
     /// <summary>
     /// Calls a <see langword="static"/> method.
@@ -17,6 +17,14 @@ internal class SerializedDispatcher
     /// <exception cref="ArgumentException"></exception>
     public static void CallStatic(Span<char> methodName, Span<byte> jsonArg, long id)
     {
+        var args = JsonSerializer.Deserialize<object[]>(jsonArg);
+        var arg0 = ((JsonElement)args[0]).Deserialize<int>();
+        var arg1 = ((JsonElement)args[1]).Deserialize<int>();
+        var ans = MathsService.EstimatePISlice(arg0, arg1);
+        Console.WriteLine(ans);
+        Messaging.MessageHandlerManager.ReturnResultSerialized(arg0 + arg1, id);
+        /*
+
         var method = GetMethodInfo(methodName);
         var args = JsonSerializer.Deserialize<object[]>(jsonArg);
         if (args is null)
@@ -28,6 +36,49 @@ internal class SerializedDispatcher
             value = ILMethodBuilder.BuildSerialized(method);
         }
         value(args, id);
+        */
+    }
+
+    private static class MathsService
+    {
+        private static IEnumerable<int> AlternatingSequence(int start = 0)
+        {
+            int i;
+            bool flip;
+            if (start == 0)
+            {
+                yield return 1;
+                i = 1;
+                flip = false;
+            }
+            else
+            {
+                i = (start * 2) - 1;
+                flip = start % 2 == 0;
+            }
+
+            while (true) yield return ((flip = !flip) ? -1 : 1) * (i += 2);
+        }
+
+        public static double EstimatePI(int sumLength)
+        {
+            return 4 * AlternatingSequence().Take(sumLength)
+                .Sum(x => 1.0 / x);
+        }
+
+        public static double EstimatePISlice(int sumStart, int sumLength)
+        {
+            var array = AlternatingSequence(sumStart)
+                .Take(sumLength).Select(x => 1d / x)
+                .Sum();
+
+            return array;
+        }
+
+        public static int Add(int a, int b)
+        {
+            return a + b;
+        }
     }
 
     private static readonly SpanStringDictionary<Action<object[], long>> functionCache = new();
@@ -56,7 +107,7 @@ internal class SerializedDispatcher
 
         if (!assemblyCache.TryGetValue(asmName, out var asm))
         {
-            string asmString = new string(asmName);
+            var asmString = new string(asmName);
             asm = Assembly.Load(asmString);
             if (asm is null)
             {

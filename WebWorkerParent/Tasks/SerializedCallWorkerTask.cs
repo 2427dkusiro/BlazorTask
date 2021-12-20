@@ -1,4 +1,6 @@
-﻿namespace BlazorTask.Tasks;
+﻿using BlazorTask.Dispatch;
+
+namespace BlazorTask.Tasks;
 
 internal static class CallIdManager
 {
@@ -139,7 +141,7 @@ public class CallResultToken<T> : ICallResultToken
 
     public void SetException(in Span<byte> span)
     {
-        var exception = System.Text.Json.JsonSerializer.Deserialize<Exception>(span) ?? throw new ArgumentException("Failed to deserialize exception.");
+        var exception = System.Text.Json.JsonSerializer.Deserialize<WorkerException>(span) ?? throw new ArgumentException("Failed to deserialize exception.");
         workerAwaiter.SetException(exception);
     }
 }
@@ -160,7 +162,8 @@ public class CallResultToken : ICallResultToken
 
     public void SetException(in Span<byte> span)
     {
-        var exception = System.Text.Json.JsonSerializer.Deserialize<Exception>(span) ?? throw new ArgumentException("Failed to deserialize exception.");
+        Console.WriteLine(System.Text.Encoding.UTF8.GetString(span));
+        var exception = System.Text.Json.JsonSerializer.Deserialize<WorkerException>(span) ?? throw new ArgumentException("Failed to deserialize exception.");
         workerAwaiter.SetException(exception);
     }
 }

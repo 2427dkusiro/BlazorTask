@@ -21,7 +21,7 @@ namespace BlazorTaskDemo.Pages
             watch.Stop();
             serviceBootTime = $"サービス起動時間：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
             watch.Restart();
-            worker = service.CreateWorker();
+            worker = service.CreateWorkerAsync();
             await worker.Start();
             watch.Stop();
             workerBootTime = $"ワーカー起動時間：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";

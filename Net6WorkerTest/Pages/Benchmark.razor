@@ -1,0 +1,46 @@
+﻿@page "/Benchmark"
+@using BlazorTask
+@inject WorkerService workerService;
+
+<PageTitle>Benchmark</PageTitle>
+
+<h1>Benckmarks</h1>
+
+@foreach (var ui in TestUIs)
+{
+    <h2>@ui.Name</h2>
+    <div>
+        <button class="btn btn-primary" @onclick=@ui.Invoke>実行</button>
+        <span class="text-danger">@ui.Status</span>
+    </div>
+    <div>
+        @if (ui.Tester is not null)
+        {
+            <table style="padding:10px 0px" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col">テスト名</th>
+                        @foreach (var header in ui.Tester.Headers)
+                        {
+                            <th scope="col">@header</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var testCase in ui.Tester.TestResults)
+                    {
+                        <tr>
+                            <th scope="row">@testCase.Name</th>
+                            @foreach (var result in testCase.Results)
+                            {
+                                <td>@Display(result)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <hr />
+}

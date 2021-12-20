@@ -1,5 +1,7 @@
 ﻿using BlazorTask.Configure;
 
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop.WebAssembly;
 
 namespace BlazorTask;
@@ -7,57 +9,51 @@ namespace BlazorTask;
 /// <summary>
 /// Provides easy way to create <see cref="Worker"/>.
 /// </summary>
-/// <remarks>
-/// Add instance of <see cref="WorkerService"/> to DI system at your app's program class.
-/// </remarks>
 public sealed class WorkerService
 {
-    private readonly HttpClient httpClient;
-    private readonly WebAssemblyJSRuntime jSRuntime;
+    private bool isInitializing;
+    private bool isInitialized;
 
-    private readonly IJSUnmarshalledObjectReference module;
-    private readonly WorkerServiceConfig config;
+    private HttpClient httpClient;
+    private WebAssemblyJSRuntime jSRuntime;
 
-    private readonly Messaging.MessageHandler messageHandler;
-    private readonly IntPtr bufferPtr;
+    private IJSUnmarshalledObjectReference module;
+
+    private Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> configFunc;
+    private WorkerServiceConfig config;
+
+    private Messaging.MessageHandler messageHandler;
+    private IntPtr bufferPtr;
     private const int bufferLength = 256;
 
-    private WorkerService(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, IJSUnmarshalledObjectReference module, WorkerServiceConfig config, Messaging.MessageHandler messageHandler, IntPtr bufferPtr)
+    public WorkerService(Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
     {
+        this.configFunc = func ?? throw new ArgumentNullException(nameof(func));
+    }
+
+    public WorkerService(WorkerServiceConfig config)
+    {
+        this.config = config;
+    }
+
+    public async ValueTask InitializeAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime)
+    {
+        if (isInitialized || isInitializing)
+        {
+            return;
+        }
+        isInitializing = true;
         this.httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         this.jSRuntime = jSRuntime ?? throw new ArgumentNullException(nameof(jSRuntime));
-        this.module = module ?? throw new ArgumentNullException(nameof(module));
-        this.config = config;
-        this.messageHandler = messageHandler ?? throw new ArgumentNullException(nameof(messageHandler));
-        this.bufferPtr = bufferPtr;
-    }
 
-    /// <summary>
-    /// Create and configure a new instance of <see cref="WorkerService"/>.
-    /// </summary>
-    /// <param name="httpClient"></param>
-    /// <param name="jSRuntime"></param>
-    /// <param name="func">Function to configure.</param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
-    {
-        var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
-        var helper = new WorkerServiceConfigHelper();
-        var result = await func(helper).ApplyAllAsync(config);
-        return await ConfigureAsync(httpClient, jSRuntime, result);
-    }
+        if (configFunc is not null)
+        {
+            var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+            var helper = new WorkerServiceConfigHelper(httpClient, jSRuntime);
+            var result = await configFunc(helper).ApplyAllAsync(config);
+            this.config = result;
+        }
 
-    /// <summary>
-    /// Create and configure a new instance of <see cref="WorkerService"/>.
-    /// </summary>
-    /// <param name="httpClient"></param>
-    /// <param name="jSRuntime"></param>
-    /// <param name="func">Function to configure.</param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    public static async Task<WorkerService> ConfigureAsync(HttpClient httpClient, WebAssemblyJSRuntime jSRuntime, WorkerServiceConfig config)
-    {
         var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
         var receiverId = Messaging.MessageHandlerManager.CreateAtWorkerModuleContext(module);
         var receiver = Messaging.MessageHandlerManager.GetHandler(receiverId);
@@ -78,18 +74,73 @@ public sealed class WorkerService
         var buffer = module.InvokeUnmarshalledJson<IntPtr, JSEnvironmentSetting, int>("Configure", config.JSEnvironmentSetting, bufferLength);
         receiver.SetBuffer(buffer, bufferLength);
 
-        WorkerService workerService = new(httpClient, jSRuntime, module, config, receiver, buffer);
-        return workerService;
+        this.module = module ?? throw new ArgumentNullException(nameof(module));
+        this.messageHandler = receiver ?? throw new ArgumentNullException(nameof(messageHandler));
+        this.bufferPtr = buffer;
+
+        isInitialized = true;
     }
 
     /// <summary>
     /// Get new instance of <see cref="Worker"/>.
     /// </summary>
+    /// <remarks>
+    /// This method not await worker creation but initializing of this class.
+    /// </remarks>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    public Worker CreateWorker()
+    public async ValueTask<Worker> CreateWorkerAsync()
     {
+        if (!isInitialized)
+        {
+            if (isInitializing)
+            {
+                await WaitForInit();
+            }
+            else
+            {
+                throw new InvalidOperationException("Service must be initialized.");
+            }
+        }
+
         var worker = new Worker(jSRuntime, module, config.WorkerInitializeSetting, bufferPtr, bufferLength, messageHandler);
         return worker;
+    }
+
+    private async Task WaitForInit()
+    {
+        for (int i = 0; i < 600; i++) // 30sec
+        {
+            await Task.Delay(50);
+            if (isInitialized)
+            {
+                return;
+            }
+        }
+        throw new TimeoutException();
+    }
+}
+
+public static class WorkerServiceExtension
+{
+    public static IServiceCollection AddWorkerService(this IServiceCollection services, Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
+    {
+        return services.AddSingleton<WorkerService, WorkerService>(sp => new WorkerService(func));
+    }
+
+    public static IServiceCollection AddWorkerService(this IServiceCollection services, WorkerServiceConfig config)
+    {
+        return services.AddSingleton<WorkerService, WorkerService>(sp => new WorkerService(config));
+    }
+
+    public static async Task InitializeWorkerService(this WebAssemblyHost host)
+    {
+        using (var scope = host.Services.CreateScope())
+        {
+            var http = scope.ServiceProvider.GetRequiredService<HttpClient>() ?? throw new NotSupportedException();
+            var js = scope.ServiceProvider.GetRequiredService<IJSRuntime>() ?? throw new NotSupportedException();
+            var service = scope.ServiceProvider.GetRequiredService<WorkerService>() ?? throw new NotSupportedException();
+            await service.InitializeAsync(http, js as WebAssemblyJSRuntime ?? throw new PlatformNotSupportedException());
+        }
     }
 }

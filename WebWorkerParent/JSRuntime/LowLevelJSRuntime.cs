@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 using static System.Reflection.Emit.OpCodes;
 
-namespace BlazorTask.WorkerImplements.JSRuntime;
+namespace BlazorTask.JSRuntime;
 
 /// <summary>
 /// Provides low-level JS invoke functions.

@@ -68,6 +68,11 @@ export function CreateWorker(ptr, len) {
     return index;
 }
 
+export function TerminateWorker(id) {
+    workers[id].terminate();
+    workers[id] = undefined;
+}
+
 export function SCall(workerId, len, callId) {
     interop.SCall((msg, trans) => workers[workerId].postMessage(msg, trans), len, callId);
 }

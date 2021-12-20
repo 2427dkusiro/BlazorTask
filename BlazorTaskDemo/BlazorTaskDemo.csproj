@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SampleWorkerAssembly\SampleWorkerAssembly.csproj" />
-    <ProjectReference Include="..\WebWorkerParent\WebWorker.csproj" />
+    <ProjectReference Include="..\WebWorkerParent\BlazorTask.csproj" />
   </ItemGroup>
 
 </Project>

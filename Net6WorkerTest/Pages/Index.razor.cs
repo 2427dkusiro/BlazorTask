@@ -1,10 +1,11 @@
 ﻿using BlazorTask;
 
+using SampleWorkerAssembly;
+
 namespace Net6WorkerTest.Pages
 {
     public partial class Index
     {
-        private WorkerService workerService;
         private Worker? worker;
         private string serviceBootTime = "";
         private string workerBootTime = "";
@@ -16,22 +17,13 @@ namespace Net6WorkerTest.Pages
         private string addResult = "";
         private string addTime = "";
 
+        private string exceptionString = "";
+
         protected async Task OnBootClick()
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            var runtime = JSRuntime as Microsoft.JSInterop.WebAssembly.WebAssemblyJSRuntime ?? throw new InvalidOperationException();
 
-            if (workerService is null)
-            {
-                workerService = await WorkerService.ConfigureAsync(Http, runtime, config => config
-                    .ResolveResourcesFromBootJson(Http)
-                    .FetchBrotliResources("decode.min.js")
-                );
-                watch.Stop();
-                serviceBootTime = $"Create WorkerService：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
-                watch.Restart();
-            }
-            worker = workerService.CreateWorker();
+            worker = await workerService.CreateWorkerAsync();
             await worker.Start();
             watch.Stop();
             workerBootTime = $"Create Worker：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
@@ -73,8 +65,14 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod(nameof(SampleWorkerAssembly.Hoge.Exception));
-            await worker.Call(method);
+            try
+            {
+                await worker.Call(typeof(Hoge).GetMethod(nameof(Hoge.Exception))!);
+            }
+            catch (Exception ex)
+            {
+                exceptionString = ex.ToString();
+            }
         }
     }
 }

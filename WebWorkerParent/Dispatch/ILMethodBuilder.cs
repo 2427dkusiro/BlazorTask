@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 using static System.Reflection.Emit.OpCodes;
 
-namespace BlazorTask.WorkerImplements.Dispatch;
+namespace BlazorTask.Dispatch;
 
 /// <summary>
 /// Build method call delegate using IL.
@@ -31,7 +31,7 @@ internal static class ILMethodBuilder
     public static Action<object[], long> BuildSerialized(MethodInfo methodInfo)
     {
         var paramTypes = methodInfo.GetParameters().Select(x => x.ParameterType).ToArray();
-        DynamicMethod dynamicMethod = new DynamicMethod($"<>{methodId++}", null, new[] { typeof(object[]), typeof(long) });
+        var dynamicMethod = new DynamicMethod($"<>{methodId++}", null, new[] { typeof(object[]), typeof(long) });
         var generator = dynamicMethod.GetILGenerator();
 
         var deserializeMethod = _deserializeMethod ??= typeof(System.Text.Json.JsonSerializer).GetMethod(nameof(System.Text.Json.JsonSerializer.Deserialize), new[] { typeof(System.Text.Json.JsonElement), typeof(System.Text.Json.JsonSerializerOptions) });
@@ -46,7 +46,6 @@ internal static class ILMethodBuilder
             var local2 = generator.DeclareLocal(methodInfo.ReturnType);
         }
         var lable1 = generator.DefineLabel();
-        var lable2 = generator.DefineLabel();
         var label3 = generator.DefineLabel();
 
         generator.Emit(Ldarg_0);
@@ -58,7 +57,7 @@ internal static class ILMethodBuilder
         generator.Emit(Newobj, _argumentExcpString ??= (typeof(ArgumentException).GetConstructor(new[] { typeof(string) })
             ?? throw new InvalidOperationException("Failed to find 'ArgumentException..ctor'.")));
         generator.Emit(Throw);
-        generator.Emit(Br, lable2);
+        generator.Emit(Br, label3);
 
         generator.MarkLabel(lable1);
         generator.Emit(Stloc_0);
@@ -76,22 +75,23 @@ internal static class ILMethodBuilder
 
         generator.BeginExceptionBlock();
         generator.Emit(Call, methodInfo);
+
         if (methodInfo.ReturnType != typeof(void))
         {
             generator.Emit(Stloc_1);
         }
-        // generator.Emit(Leave_S, lable2);
 
-        // throw ex;
+        // handle exception
         generator.BeginCatchBlock(typeof(Exception));
         generator.Emit(Ldarg_1);
         var exMethod = _returnException ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnException))
             ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnException)}' method");
         generator.Emit(Call, exMethod);
-        // generator.Emit(Leave_S, label3);
+        generator.Emit(Leave_S, label3);
+
         // not exception result
         generator.EndExceptionBlock();
-        generator.MarkLabel(lable2);
+
         if (methodInfo.ReturnType == typeof(void))
         {
             generator.Emit(Ldarg_1);
