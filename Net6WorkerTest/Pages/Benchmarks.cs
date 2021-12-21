@@ -98,7 +98,7 @@ public static class Benchmarks
 
         sw.Stop();
 
-        foreach(var worker in workers)
+        foreach (var worker in workers)
         {
             worker.Dispose();
         }

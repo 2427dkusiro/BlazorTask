@@ -1,7 +1,6 @@
 ﻿using BlazorTask.Dispatch;
 using BlazorTask.Tasks;
 
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace BlazorTask.Messaging

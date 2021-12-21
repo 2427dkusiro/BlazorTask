@@ -35,8 +35,8 @@ namespace Net6WorkerTest.Pages
 
             TestUIs.Add(new TestUI("Calculate PI MT", async tester =>
             {
-                await tester.RunMTTest(piIterations_small, workerService);
-                await tester.RunMTTest(piIterations_mid, workerService);
+                // await tester.RunMTTest(piIterations_small, workerService);
+                // await tester.RunMTTest(piIterations_mid, workerService);
                 await tester.RunMTTest(piIterations_large, workerService);
             }));
         }
