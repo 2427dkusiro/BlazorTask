@@ -1,6 +1,6 @@
 ﻿namespace SampleWorkerAssembly
 {
-    public class Hoge
+    public static class Hoge
     {
         public static void Empty()
         {
@@ -10,6 +10,20 @@
         public static int Add(int a, int b)
         {
             return a + b;
+        }
+
+        public static void WriteAnswer(int ans)
+        {
+            WorkerCallback?.Invoke(ans.ToString());
+        }
+
+        public static Action<string>? WorkerCallback { get; set; }
+
+        public static async Task<int> ReverseCall(int a, int b)
+        {
+            var answer = a + b;
+            await BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswer)), answer);
+            return answer;
         }
 
         public static void Exception()
@@ -36,7 +50,10 @@
                 flip = start % 2 == 0;
             }
 
-            while (true) yield return ((flip = !flip) ? -1 : 1) * (i += 2);
+            while (true)
+            {
+                yield return ((flip = !flip) ? -1 : 1) * (i += 2);
+            }
         }
 
         public static double EstimatePI(int sumLength)

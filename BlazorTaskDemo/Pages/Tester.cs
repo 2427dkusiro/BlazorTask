@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Net6WorkerTest.Pages;
+namespace BlazorTaskDemo.Pages;
 
 public class Tester
 {

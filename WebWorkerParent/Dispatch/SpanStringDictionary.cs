@@ -56,7 +56,7 @@ internal class SpanStringDictionary<TValue>
         }
         while (index != 0)
         {
-            ref var entry = ref values[index];
+            ref SpanStringDictionary<TValue>.HashTableEntry entry = ref values[index];
             if (key.SequenceEqual(entry.Key))
             {
                 value = entry.Value;
@@ -78,7 +78,7 @@ internal class SpanStringDictionary<TValue>
     {
         get
         {
-            if (TryGetValue(key, out var result))
+            if (TryGetValue(key, out TValue? result))
             {
                 return result;
             }

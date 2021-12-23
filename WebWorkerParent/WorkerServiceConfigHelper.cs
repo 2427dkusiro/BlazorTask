@@ -37,7 +37,7 @@ public class WorkerServiceConfigHelper
     {
         WorkerServiceConfig current = first;
         var count = isAsync.Count;
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var _isAsync = isAsync.Dequeue();
             if (_isAsync)
@@ -66,7 +66,7 @@ public static class ConfigureExtensionMethod
     {
         helper.EnqueueAsync(async config =>
         {
-            var resolver = await BootJsonResourceResolver.CreateInstanceAsync(httpClient, path);
+            BootJsonResourceResolver? resolver = await BootJsonResourceResolver.CreateInstanceAsync(httpClient, path);
             return FromResolver(config, resolver);
         });
         return helper;

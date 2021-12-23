@@ -28,7 +28,7 @@ public sealed class WorkerService
 
     public WorkerService(Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> func)
     {
-        this.configFunc = func ?? throw new ArgumentNullException(nameof(func));
+        configFunc = func ?? throw new ArgumentNullException(nameof(func));
     }
 
     public WorkerService(WorkerServiceConfig config)
@@ -50,13 +50,13 @@ public sealed class WorkerService
         {
             var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
             var helper = new WorkerServiceConfigHelper(httpClient, jSRuntime);
-            var result = await configFunc(helper).ApplyAllAsync(config);
+            WorkerServiceConfig result = await configFunc(helper).ApplyAllAsync(config);
             this.config = result;
         }
 
-        var module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
-        var receiverId = Messaging.MessageHandlerManager.CreateAtWorkerModuleContext(module);
-        var receiver = Messaging.MessageHandlerManager.GetHandler(receiverId);
+        IJSUnmarshalledObjectReference? module = await jSRuntime.InvokeAsync<IJSUnmarshalledObjectReference>("import", config.JSEnvironmentSetting.ParentScriptPath);
+        Messaging.HandlerId receiverId = Messaging.MessageHandlerManager.CreateAtWorkerModuleContext(module);
+        Messaging.MessageHandler? receiver = Messaging.MessageHandlerManager.GetHandler(receiverId);
 
         if (config.JSEnvironmentSetting is null || config.WorkerInitializeSetting is null)
         {
@@ -71,12 +71,12 @@ public sealed class WorkerService
             throw new InvalidOperationException($"{nameof(WorkerInitializeSetting)} is invalid. {message2}");
         }
 
-        var buffer = module.InvokeUnmarshalledJson<IntPtr, JSEnvironmentSetting, int>("Configure", config.JSEnvironmentSetting, bufferLength);
+        IntPtr buffer = module.InvokeUnmarshalledJson<IntPtr, JSEnvironmentSetting, int>("Configure", config.JSEnvironmentSetting, bufferLength);
         receiver.SetBuffer(buffer, bufferLength);
 
         this.module = module ?? throw new ArgumentNullException(nameof(module));
-        this.messageHandler = receiver ?? throw new ArgumentNullException(nameof(messageHandler));
-        this.bufferPtr = buffer;
+        messageHandler = receiver ?? throw new ArgumentNullException(nameof(messageHandler));
+        bufferPtr = buffer;
 
         isInitialized = true;
     }
@@ -109,7 +109,7 @@ public sealed class WorkerService
 
     private async Task WaitForInit()
     {
-        for (int i = 0; i < 600; i++) // 30sec
+        for (var i = 0; i < 600; i++) // 30sec
         {
             await Task.Delay(50);
             if (isInitialized)
@@ -135,11 +135,11 @@ public static class WorkerServiceExtension
 
     public static async Task InitializeWorkerService(this WebAssemblyHost host)
     {
-        using (var scope = host.Services.CreateScope())
+        using (IServiceScope? scope = host.Services.CreateScope())
         {
-            var http = scope.ServiceProvider.GetRequiredService<HttpClient>() ?? throw new NotSupportedException();
-            var js = scope.ServiceProvider.GetRequiredService<IJSRuntime>() ?? throw new NotSupportedException();
-            var service = scope.ServiceProvider.GetRequiredService<WorkerService>() ?? throw new NotSupportedException();
+            HttpClient? http = scope.ServiceProvider.GetRequiredService<HttpClient>() ?? throw new NotSupportedException();
+            IJSRuntime? js = scope.ServiceProvider.GetRequiredService<IJSRuntime>() ?? throw new NotSupportedException();
+            WorkerService? service = scope.ServiceProvider.GetRequiredService<WorkerService>() ?? throw new NotSupportedException();
             await service.InitializeAsync(http, js as WebAssemblyJSRuntime ?? throw new PlatformNotSupportedException());
         }
     }

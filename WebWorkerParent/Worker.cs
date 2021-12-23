@@ -10,14 +10,11 @@ namespace BlazorTask;
 /// <summary>
 /// Represents a worker. 
 /// </summary>
-public class Worker : IDisposable
+public class Worker : IDisposable, ICallProvider
 {
     private readonly WebAssemblyJSRuntime jSRuntime;
     private readonly IJSUnmarshalledObjectReference module;
     private readonly WorkerInitializeSetting workerInitializeSetting;
-
-    private readonly IntPtr buffer;
-    private readonly int bufferLength;
 
     private readonly MessageHandler messageHandler;
 
@@ -32,8 +29,6 @@ public class Worker : IDisposable
         this.jSRuntime = jSRuntime;
         this.module = module;
         this.workerInitializeSetting = workerInitializeSetting;
-        this.buffer = buffer;
-        this.bufferLength = bufferLength;
         this.messageHandler = messageHandler;
     }
 
@@ -51,7 +46,8 @@ public class Worker : IDisposable
         {
             throw new InvalidOperationException("Worker is already started.");
         }
-        StartWorkerTask task = new(jSRuntime, module, workerInitializeSetting, id => workerId = id, messageHandler);
+        workerId = WorkerIdCounter.WorkerId;
+        StartWorkerTask task = new(jSRuntime, module, workerInitializeSetting, workerId, messageHandler);
         return task;
     }
 
@@ -74,7 +70,7 @@ public class Worker : IDisposable
     public WorkerTask Call(MethodInfo methodInfo, params object?[] args)
     {
         var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(args);
-        var name = GetMethodName(methodInfo);
+        var name = Dispatch.MethodNameBuilder.ToIdentifier(methodInfo);
         return SerializedCall(name, json);
     }
 
@@ -87,25 +83,20 @@ public class Worker : IDisposable
     public WorkerTask<T> Call<T>(MethodInfo methodInfo, params object?[] args)
     {
         var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(args);
-        var name = GetMethodName(methodInfo);
+        var name = Dispatch.MethodNameBuilder.ToIdentifier(methodInfo);
         return SerializedCall<T>(name, json);
-    }
-
-    private static string GetMethodName(MethodInfo methodInfo)
-    {
-        var type = methodInfo.DeclaringType ?? throw new InvalidOperationException("Method had no declaring type.");
-        var asm = type.Assembly;
-        return $"[{asm.GetName().Name}]{type.FullName}:{methodInfo.Name}";
     }
 
     private SerializedCallWorkerTask SerializedCall(string methodName, byte[] arg)
     {
-        return new SerializedCallWorkerTask(jSRuntime, module, methodName, arg, workerId, buffer, bufferLength, messageHandler);
+        var header = new CallHeader(CallHeader.CallType.Static);
+        return new SerializedCallWorkerTask(jSRuntime, header, methodName, arg, workerId, messageHandler);
     }
 
     private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
     {
-        return new SerializedCallWorkerTask<T>(jSRuntime, module, methodName, arg, workerId, buffer, bufferLength, messageHandler);
+        var header = new CallHeader(CallHeader.CallType.Static);
+        return new SerializedCallWorkerTask<T>(jSRuntime, header, methodName, arg, workerId, messageHandler);
     }
 
     protected virtual void Dispose(bool disposing)
@@ -134,4 +125,10 @@ public class Worker : IDisposable
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
+}
+
+internal static class WorkerIdCounter
+{
+    private static int workerId = 1;
+    public static int WorkerId { get => workerId++; }
 }

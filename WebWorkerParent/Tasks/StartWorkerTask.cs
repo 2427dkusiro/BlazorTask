@@ -7,23 +7,22 @@ public sealed class StartWorkerTask : WorkerTask
     private readonly IJSUnmarshalledRuntime runtime;
     private readonly IJSUnmarshalledObjectReference module;
     private readonly WorkerInitializeSetting workerInitOption;
-    private readonly Action<int> onIdAssigned;
+    private readonly int workerId;
     private readonly Messaging.MessageHandler messageHandler;
 
-    public StartWorkerTask(IJSUnmarshalledRuntime runtime, IJSUnmarshalledObjectReference module, WorkerInitializeSetting workerInitOption, Action<int> onIdAssigned, Messaging.MessageHandler messageHandler)
+    public StartWorkerTask(IJSUnmarshalledRuntime runtime, IJSUnmarshalledObjectReference module, WorkerInitializeSetting workerInitOption, int workerId, Messaging.MessageHandler messageHandler)
     {
         this.runtime = runtime;
         this.module = module;
         this.workerInitOption = workerInitOption;
-        this.onIdAssigned = onIdAssigned;
+        this.workerId = workerId;
         this.messageHandler = messageHandler;
     }
 
     protected override void BeginAsyncInvoke(WorkerAwaiter workerAwaiter)
     {
-        var id = module.InvokeUnmarshalledJson<int, WorkerInitializeSetting>("CreateWorker", workerInitOption);
-        messageHandler.RegisterInitializeAwaiter(id, workerAwaiter);
-        onIdAssigned.Invoke(id);
+        module.InvokeVoidUnmarshalledJson("CreateWorker", workerInitOption, workerId);
+        messageHandler.RegisterInitializeAwaiter(workerId, workerAwaiter);
     }
 
     protected override void BlockingInvoke()

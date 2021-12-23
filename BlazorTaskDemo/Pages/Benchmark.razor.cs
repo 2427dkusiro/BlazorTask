@@ -1,6 +1,6 @@
 using BlazorTask;
 
-namespace Net6WorkerTest.Pages
+namespace BlazorTaskDemo.Pages
 {
     public partial class Benchmark
     {

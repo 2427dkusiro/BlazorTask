@@ -5,7 +5,7 @@ using SampleWorkerAssembly;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace Net6WorkerTest.Pages;
+namespace BlazorTaskDemo.Pages;
 
 public static class Benchmarks
 {

@@ -522,15 +522,34 @@ function OnMessageReceived(message) {
 }
 
 /**
+ * 
+ * @param {number} source
+ */
+function SCall(source) {
+    if (source != 0) {
+        console.error("not supported!");
+    }
+    interop.StaticCall((msg, trans) => globalThis.postMessage(msg, null, trans));
+}
+
+/**
  * Return not void result or exception.
+ * @param {number} source 
  * */
-function ReturnResult() {
-    interop.ReturnResult();
+function ReturnResult(source) {
+    if (source != 0) {
+        console.error("not supported!");
+    }
+    interop.ReturnResult((msg, trans) => globalThis.postMessage(msg, null, trans));
 }
 
 /**
  * Return void result.
+ * @param {number} source
  * */
-function ReturnVoidResult() {
-    interop.ReturnVoidResult();
+function ReturnVoidResult(source) {
+    if (source != 0) {
+        console.error("not supported!");
+    }
+    interop.ReturnVoidResult((msg, trans) => globalThis.postMessage(msg, null, trans));
 }

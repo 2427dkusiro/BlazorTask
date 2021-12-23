@@ -1,223 +1,235 @@
 ﻿using BlazorTask.Dispatch;
 using BlazorTask.Tasks;
 
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
-namespace BlazorTask.Messaging
+namespace BlazorTask.Messaging;
+
+public abstract class MessageHandler
 {
-    public abstract class MessageHandler
+    private IntPtr buffer;
+    private int bufferLength;
+
+    public HandlerId Id { get; protected set; }
+
+    protected abstract void JSInvokeVoid(string name, int arg0);
+
+    public void SetBuffer(IntPtr buffer, int bufferLength)
     {
-        private IntPtr buffer;
-        private int bufferLength;
+        this.buffer = buffer;
+        this.bufferLength = bufferLength;
+    }
 
-        public HandlerId Id { get; protected set; }
+    private readonly Dictionary<int, WorkerAwaiter> workerInitAwaiters = new();
+    public void RegisterInitializeAwaiter(int id, WorkerAwaiter awaiter)
+    {
+        workerInitAwaiters.Add(id, awaiter);
+    }
 
-        protected abstract void JSInvokeVoid(string name);
+    private readonly Dictionary<int, ICallResultToken> callResultTokens = new();
+    public void RegisterCallResultToken(int callId, ICallResultToken token)
+    {
+        callResultTokens.Add(callId, token);
+    }
 
-        public void SetBuffer(IntPtr buffer, int bufferLength)
+    public void ReceiveMessage(string type, int id)
+    {
+        switch (type)
         {
-            this.buffer = buffer;
-            this.bufferLength = bufferLength;
+            case "Init":
+                OnReceiveInitialized(id);
+                return;
+            case "SCall":
+                OnReceiveCall(id);
+                return;
+            case "Res":
+                OnReceiveResult(id);
+                return;
+        }
+    }
+
+    internal void OnReceiveInitialized(int id)
+    {
+        workerInitAwaiters[id].SetResult();
+        workerInitAwaiters.Remove(id);
+    }
+
+    private int _callReceiveId = 0;
+    internal int CallReceiveId { get => _callReceiveId++; }
+
+    private Dictionary<int, (int sourceId, CallHeader header)> headers = new();
+
+    internal unsafe void OnReceiveCall(int sourceId)
+    {
+        var callId = ((long)Id << 32) + sourceId;
+        var ptr = (int*)buffer.ToPointer();
+        var length = ptr[0];
+        if (length < 20)
+        {
+            throw new InvalidOperationException("Buffer too short");
         }
 
-        private readonly Dictionary<int, WorkerAwaiter> workerInitAwaiters = new();
-        public void RegisterInitializeAwaiter(int id, WorkerAwaiter awaiter)
-        {
-            workerInitAwaiters.Add(id, awaiter);
-        }
+        var headerAddr = ptr[1];
+        var headerLength = ptr[2];
+        var argAddr = ptr[3];
+        var argLength = ptr[4];
 
-        private readonly Dictionary<int, ICallResultToken> callResultTokens = new();
-        public void RegisterCallResultToken(int callId, ICallResultToken token)
-        {
-            callResultTokens.Add(callId, token);
-        }
+        var headerPtr = (byte*)headerAddr;
+        ref CallHeader header = ref Unsafe.AsRef<CallHeader>(headerPtr);
+        var nameBin = new Span<char>(headerPtr + header.payloadLength, (headerLength - header.payloadLength) / sizeof(char));
 
-        public void ReceiveMessage(string type, int id)
+        var resultId = CallReceiveId;
+        headers.Add(resultId, (sourceId, header));
+        var id = (((long)Id) << 32) + resultId;
+
+        SerializedDispatcher.CallStatic(ref header, nameBin, new Span<byte>((void*)argAddr, argLength), id);
+    }
+
+    internal unsafe void OnReceiveResult(int workerId)
+    {
+        var bufferPtr = (int*)buffer.ToPointer();
+        var bufferpayload = bufferPtr[0];
+        if (bufferpayload < 12)
         {
-            switch (type)
+            throw new InvalidOperationException("buffer too short.");
+        }
+        var dataAddr = bufferPtr[1];
+        var dataLen = bufferPtr[2];
+
+        var dataPtr = (int*)dataAddr;
+        var payload = dataPtr[0];
+        var callId = dataPtr[1];
+        var resultType = dataPtr[2];
+
+        switch (resultType)
+        {
+            case 0:
+                callResultTokens[callId].SetResultFromJson(null);
+                return;
+            case 2:
+                callResultTokens[callId].SetResultFromJson(new Span<byte>(dataPtr + 3, payload - 12));
+                return;
+            case 4:
+                callResultTokens[callId].SetException(new Span<byte>(dataPtr + 3, payload - 12));
+                return;
+        }
+    }
+
+    public unsafe void CallSerialized(CallHeader callHeader, string methodName, byte[] args, int workerId, WorkerAwaiter workerAwaiter)
+    {
+        if (bufferLength < 28)
+        {
+            throw new InvalidOperationException("Buffer too short");
+        }
+        fixed (char* methodNamePtr = methodName)
+        {
+            fixed (byte* argPtr = args)
             {
-                case "Init":
-                    OnReceiveInitialized(id);
-                    return;
-                case "SCall":
-                    OnReceiveCallStaticSerialized(id);
-                    return;
-                case "Res":
-                    OnReceiveResult(id);
-                    return;
+                var ptr = (int*)buffer.ToPointer();
+                ptr[0] = 0;
+                ptr[1] = (int)&callHeader;
+                ptr[2] = callHeader.payloadLength;
+                ptr[3] = (int)methodNamePtr;
+                ptr[4] = methodName.Length * sizeof(char);
+                ptr[5] = (int)argPtr;
+                ptr[6] = args.Length;
+                ptr[0] = 28;
+
+                JSInvokeVoid("SCall", workerId);
             }
         }
+        var token = new CallResultToken(workerAwaiter);
+        RegisterCallResultToken(callHeader.callId, token);
+    }
 
-        internal void OnReceiveInitialized(int id)
+    public unsafe void CallSerialized<T>(CallHeader callHeader, string methodName, byte[] args, int workerId, WorkerAwaiter<T> workerAwaiter)
+    {
+        if (bufferLength < 28)
         {
-            workerInitAwaiters[id].SetResult();
-            workerInitAwaiters.Remove(id);
+            throw new InvalidOperationException("Buffer too short");
         }
-
-        internal unsafe void OnReceiveCallStaticSerialized(int id)
+        fixed (char* methodNamePtr = methodName)
         {
-            long callId = ((long)Id << 32) + id;
-            int* ptr = (int*)buffer.ToPointer();
-            int length = ptr[0];
-            if (length < 20)
+            fixed (byte* argPtr = args)
             {
-                throw new InvalidOperationException();
-            }
+                var ptr = (int*)buffer.ToPointer();
+                ptr[0] = 0;
+                ptr[1] = (int)&callHeader;
+                ptr[2] = callHeader.payloadLength;
+                ptr[3] = (int)methodNamePtr;
+                ptr[4] = methodName.Length * sizeof(char);
+                ptr[5] = (int)argPtr;
+                ptr[6] = args.Length;
+                ptr[0] = 28;
 
-            int nameAddr = ptr[1];
-            int nameLength = ptr[2];
-            int argAddr = ptr[3];
-            int argLength = ptr[4];
-
-            SerializedDispatcher.CallStatic(new Span<char>((void*)nameAddr, nameLength / sizeof(char)), new Span<byte>((void*)argAddr, argLength), callId);
-        }
-
-        internal unsafe void OnReceiveResult(int workerId)
-        {
-            int* bufferPtr = (int*)buffer.ToPointer();
-            int bufferpayload = bufferPtr[0];
-            if (bufferpayload < 12)
-            {
-                throw new InvalidOperationException("buffer too short.");
-            }
-            int dataAddr = bufferPtr[1];
-            int dataLen = bufferPtr[2];
-
-            int* dataPtr = (int*)dataAddr;
-            int payload = dataPtr[0];
-            int callId = dataPtr[1];
-            int resultType = dataPtr[2];
-
-            switch (resultType)
-            {
-                case 0:
-                    callResultTokens[callId].SetResultFromJson(null);
-                    return;
-                case 2:
-                    callResultTokens[callId].SetResultFromJson(new Span<byte>(dataPtr + 3, payload - 12));
-                    return;
-                case 4:
-                    callResultTokens[callId].SetException(new Span<byte>(dataPtr + 3, payload - 12));
-                    return;
+                JSInvokeVoid("SCall", workerId);
             }
         }
+        var token = new CallResultToken<T>(workerAwaiter);
+        RegisterCallResultToken(callHeader.callId, token);
+    }
 
-        public unsafe void ReturnResultVoid(int id)
+    public unsafe void ReturnResultVoid(int resultId)
+    {
+        if (bufferLength < 12)
         {
-            var ptr = (int*)buffer.ToPointer();
-            ptr[0] = 0;
-            ptr[1] = id;
-            ptr[2] = 0;
-            ptr[0] = 12;
-            JSInvokeVoid("ReturnVoidResult");
+            throw new InvalidOperationException("Buffer too short");
         }
+        (var source, CallHeader header) = headers[resultId];
 
-        public unsafe void ReturnResultSerialized<T>(T value, int id)
+        var ptr = (int*)buffer.ToPointer();
+        ptr[0] = 0;
+        ptr[1] = header.callId;
+        ptr[2] = 0;
+        ptr[0] = 12;
+        JSInvokeVoid("ReturnVoidResult", source);
+    }
+
+    public unsafe void ReturnResultSerialized<T>(T value, int resultId)
+    {
+        if (bufferLength < 20)
         {
-            var ptr = (int*)buffer.ToPointer();
-            ptr[0] = 0;
-            var json = JsonSerializer.SerializeToUtf8Bytes(value);
-            fixed (void* jsonPtr = json)
-            {
-                ptr[1] = id;
-                ptr[2] = 2;
-                ptr[3] = (int)jsonPtr;
-                ptr[4] = json.Length;
-                ptr[0] = 20;
-                JSInvokeVoid("ReturnResult");
-            }
+            throw new InvalidOperationException("Buffer too short");
         }
+        (var source, CallHeader header) = headers[resultId];
 
-        public unsafe void ReturnException(Exception exception, int id)
+        var ptr = (int*)buffer.ToPointer();
+        ptr[0] = 0;
+        var json = JsonSerializer.SerializeToUtf8Bytes(value);
+        fixed (void* jsonPtr = json)
         {
-            var ptr = (int*)buffer.ToPointer();
-            ptr[0] = 0;
-            var wrapped = new WorkerException(exception.Message, exception.StackTrace, exception.Source, exception.GetType().FullName);
-            var json = JsonSerializer.SerializeToUtf8Bytes(wrapped);
-            fixed (void* jsonPtr = json)
-            {
-                ptr[1] = id;
-                ptr[2] = 4;
-                ptr[3] = (int)jsonPtr;
-                ptr[4] = json.Length;
-                ptr[0] = 20;
-                JSInvokeVoid("ReturnResult");
-            }
+            ptr[1] = header.callId;
+            ptr[2] = 2;
+            ptr[3] = (int)jsonPtr;
+            ptr[4] = json.Length;
+            ptr[0] = 20;
+            JSInvokeVoid("ReturnResult", source);
+        }
+    }
+
+    public unsafe void ReturnException(Exception exception, int resultId)
+    {
+        Console.WriteLine($"a exception was thrown:{exception}");
+
+        if (bufferLength < 20)
+        {
+            throw new InvalidOperationException("Buffer too short");
+        }
+        (var source, CallHeader header) = headers[resultId];
+
+        var ptr = (int*)buffer.ToPointer();
+        ptr[0] = 0;
+        var wrapped = new WorkerException(exception.Message, exception.StackTrace, exception.Source, exception.GetType().FullName);
+        var json = JsonSerializer.SerializeToUtf8Bytes(wrapped);
+        fixed (void* jsonPtr = json)
+        {
+            ptr[1] = header.callId;
+            ptr[2] = 4;
+            ptr[3] = (int)jsonPtr;
+            ptr[4] = json.Length;
+            ptr[0] = 20;
+            JSInvokeVoid("ReturnResult", source);
         }
     }
 }
-
-/**
- * Worker Messaging Protocol
- * 
- * Message has the type such as "Init" , "SCall"...
- * Type provide the definition of the way to transfer data.
- * 
- * Message body is JS object.(or null)
- *  field "t" : message Type. 
- *  field "d" : transfer Data(option).
- *  field "i" : message Id(option).
- *  
- * For JS<=>C# interop, use 2 buffer.
- *  general buffer: fixed size buffer to put interop argumetnts.
- *  data buffer: flex size buffer to put data.
- * These buffer is instance-shared. And first 4 byte must be payload length not to read unexpected field.
- * 
- * Init : Worker => Parent
- *  Notify worker INITialization completed. This message has no body.
- * 
- * SCall : Parent => Worker 
- *  CALL method from Serialized arguments.
- *  Body:
- *   i:number method call ID.
- *   d:arrayBuffer[]
- *    [0]:arrayBuffer UTF-16 encoded method mame string. 
- *    [1]:arrayBuffer UTF-8 encoded json arguments.
- *       
- *  C#=>JS: Use general buffer 20 bytes.
- *   [0]:Int32 payload length(20).
- *   [1]:Int32 pointer to method name string.
- *   [2]:Int32 method name length in bytes.(2x larger than string length)
- *   [3]:Int32 pointer to json arguments.
- *   [4]:Int32 json arguments length in bytes.
- *   
- *  JS=>C#: Use general buffer 20 bytes and use data buffer.
- *   general buffer(same to C#=>JS):
- *    [0]:Int32 payload length(20).
- *    [1]:Int32 pointer to method name string in data buffer.
- *    [2]:Int32 method name length in bytes.(2x larger than string length)
- *    [3]:Int32 pointer to json arguments in data buffer.
- *    [4]:Int32 json arguments length in bytes. 
- *   data buffer:
- *    + method name.
- *    + json args.
- *    
- * Res : Worker => Parent
- *  Return method call RESult.
- *  Body:
- *   d:arraybuffer[]
- *    [0]:Int32 payload size.
- *    [1]:Int32 call ID.
- *    [2]:Int32 result type. 
- *     { 
- *       0 = execution succeeded but returned nothing. 
- *       1 = allocated.
- *       2 = execution succeeded and returned json value.
- *       3 = exception occured but no information.
- *       4 = exception occured and re-throw it as json.
- *     }
- *    [3]:Any returned value.(flex length)
- *    
- *   C#=>JS:
- *    when return void: use general buffer 12 bytes.
- *     [0]:Int32 payload length.
- *     [1]:Int32 call ID.
- *     [2]:Int32 result type.
- *
- *    when return something: use general buffer 20 bytes.
- *     [0]:Int32 payload length.
- *     [1]:Int32 call ID.
- *     [2]:Int32 result type.
- *     [3]:Int32 pointer to return value.
- *     [4]:Int32 return value length.
- */

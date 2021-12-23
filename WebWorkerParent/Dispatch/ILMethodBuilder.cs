@@ -30,23 +30,23 @@ internal static class ILMethodBuilder
     /// <exception cref="InvalidOperationException"></exception>
     public static Action<object[], long> BuildSerialized(MethodInfo methodInfo)
     {
-        var paramTypes = methodInfo.GetParameters().Select(x => x.ParameterType).ToArray();
+        Type[]? paramTypes = methodInfo.GetParameters().Select(x => x.ParameterType).ToArray();
         var dynamicMethod = new DynamicMethod($"<>{methodId++}", null, new[] { typeof(object[]), typeof(long) });
-        var generator = dynamicMethod.GetILGenerator();
+        ILGenerator? generator = dynamicMethod.GetILGenerator();
 
-        var deserializeMethod = _deserializeMethod ??= typeof(System.Text.Json.JsonSerializer).GetMethod(nameof(System.Text.Json.JsonSerializer.Deserialize), new[] { typeof(System.Text.Json.JsonElement), typeof(System.Text.Json.JsonSerializerOptions) });
+        MethodInfo? deserializeMethod = _deserializeMethod ??= typeof(System.Text.Json.JsonSerializer).GetMethod(nameof(System.Text.Json.JsonSerializer.Deserialize), new[] { typeof(System.Text.Json.JsonElement), typeof(System.Text.Json.JsonSerializerOptions) });
         if (deserializeMethod is null)
         {
             throw new InvalidOperationException("Failed to find 'Deserialize' method");
         }
 
-        var local1 = generator.DeclareLocal(typeof(object[]));
+        LocalBuilder? local1 = generator.DeclareLocal(typeof(object[]));
         if (methodInfo.ReturnType != typeof(void))
         {
-            var local2 = generator.DeclareLocal(methodInfo.ReturnType);
+            LocalBuilder? local2 = generator.DeclareLocal(methodInfo.ReturnType);
         }
-        var lable1 = generator.DefineLabel();
-        var label3 = generator.DefineLabel();
+        Label lable1 = generator.DefineLabel();
+        Label label3 = generator.DefineLabel();
 
         generator.Emit(Ldarg_0);
         generator.Emit(Dup);
@@ -69,7 +69,7 @@ internal static class ILMethodBuilder
             generator.Emit(Ldelem_Ref);
             generator.Emit(Unbox_Any, typeof(System.Text.Json.JsonElement));
             generator.Emit(Ldnull);
-            var method = deserializeMethod.MakeGenericMethod(paramTypes[i]);
+            MethodInfo? method = deserializeMethod.MakeGenericMethod(paramTypes[i]);
             generator.Emit(Call, method);
         }
 
@@ -84,7 +84,7 @@ internal static class ILMethodBuilder
         // handle exception
         generator.BeginCatchBlock(typeof(Exception));
         generator.Emit(Ldarg_1);
-        var exMethod = _returnException ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnException))
+        MethodInfo? exMethod = _returnException ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnException))
             ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnException)}' method");
         generator.Emit(Call, exMethod);
         generator.Emit(Leave_S, label3);
@@ -96,8 +96,25 @@ internal static class ILMethodBuilder
         {
             generator.Emit(Ldarg_1);
 
-            var method = _returnVoid ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultVoid))
-                ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandler.ReturnResultVoid)}' method.");
+            MethodInfo? method = _returnVoid ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultVoid))
+                ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnResultVoid)}' method.");
+            generator.Emit(Call, method);
+        }
+        else if (methodInfo.ReturnType == typeof(Task))
+        {
+            generator.Emit(Ldloc_1);
+            generator.Emit(Ldarg_1);
+            MethodInfo method = returnAsyncVoid ??= typeof(ILMethodBuilder).GetMethods().First(x => x.Name == nameof(ReturnAsyncValueHelper) && !x.IsGenericMethod);
+            generator.Emit(Call, method);
+        }
+        else if (methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            generator.Emit(Ldloc_1);
+            generator.Emit(Ldarg_1);
+            Type[]? genericParam = methodInfo.ReturnType.GetGenericArguments();
+            MethodInfo method = returnAsyncValue ??= typeof(ILMethodBuilder).GetMethods().First(x => x.Name == nameof(ReturnAsyncValueHelper) && x.IsGenericMethod)
+                .MakeGenericMethod(methodInfo.ReturnType.GetGenericArguments())
+                ?? throw new InvalidOperationException($"Failed to find '{nameof(ReturnAsyncValueHelper)}' method");
             generator.Emit(Call, method);
         }
         else
@@ -105,7 +122,7 @@ internal static class ILMethodBuilder
             generator.Emit(Ldloc_1);
             generator.Emit(Ldarg_1);
 
-            var method = _returnSerialized ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultSerialized))
+            MethodInfo? method = _returnSerialized ??= typeof(MessageHandlerManager).GetMethod(nameof(MessageHandlerManager.ReturnResultSerialized))
                ?? throw new InvalidOperationException($"Failed to find '{nameof(MessageHandlerManager.ReturnResultSerialized)}' method.");
             generator.Emit(Call, method.MakeGenericMethod(methodInfo.ReturnType));
         }
@@ -113,6 +130,26 @@ internal static class ILMethodBuilder
         generator.Emit(Ret);
 
         return dynamicMethod.CreateDelegate<Action<object[], long>>();
+    }
+
+    private static MethodInfo? returnAsyncVoid;
+    public static void ReturnAsyncValueHelper(Task value, long id)
+    {
+        System.Runtime.CompilerServices.TaskAwaiter awaiter = value.GetAwaiter();
+        awaiter.OnCompleted(() =>
+        {
+            MessageHandlerManager.ReturnResultVoid(id);
+        });
+    }
+
+    private static MethodInfo? returnAsyncValue;
+    public static void ReturnAsyncValueHelper<T>(Task<T> value, long id)
+    {
+        System.Runtime.CompilerServices.TaskAwaiter<T> awaiter = value.GetAwaiter();
+        awaiter.OnCompleted(() =>
+        {
+            MessageHandlerManager.ReturnResultSerialized(awaiter.GetResult(), id);
+        });
     }
 
     /// <summary>

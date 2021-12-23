@@ -15,7 +15,7 @@ public record JSEnvironmentSetting
 
     private static JSEnvironmentSetting CreateDefault()
     {
-        var type = typeof(Messaging.MessageHandlerManager);
+        Type? type = typeof(Messaging.MessageHandlerManager);
         return new JSEnvironmentSetting()
         {
             ParentScriptPath = DefaultSettings.DefaultParentScriptPath,

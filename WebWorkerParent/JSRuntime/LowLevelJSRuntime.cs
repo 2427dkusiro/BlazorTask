@@ -43,16 +43,16 @@ public class LowLevelJSRuntime
 
     private static Func<string, IntPtr, string> BuildInvokeJS()
     {
-        var invokeJS = runtime.GetMethod("InvokeJS", BindingFlags.NonPublic | BindingFlags.Static)
+        MethodInfo? invokeJS = runtime.GetMethod("InvokeJS", BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("Failed to find 'InvokeJS' Method.");
 
         DynamicMethod dynamicMethod = new("<>InvokeJS", typeof(string), new[] { typeof(string), typeof(IntPtr) }, module, true);
-        var ilGen = dynamicMethod.GetILGenerator();
+        ILGenerator? ilGen = dynamicMethod.GetILGenerator();
         ilGen.Emit(Ldarg_0);
         ilGen.Emit(Ldarg_1);
         ilGen.Emit(Call, invokeJS);
         ilGen.Emit(Ret);
-        var del = dynamicMethod.CreateDelegate<Func<string, IntPtr, string>>();
+        Func<string, IntPtr, string>? del = dynamicMethod.CreateDelegate<Func<string, IntPtr, string>>();
         return del;
     }
 
@@ -74,18 +74,18 @@ public class LowLevelJSRuntime
 
     private static Func<int, string, object[], IntPtr, object> BuildInvokeJSWithArgs()
     {
-        var invokeJSWithArgs = runtime.GetMethod("InvokeJSWithArgs", BindingFlags.NonPublic | BindingFlags.Static)
+        MethodInfo? invokeJSWithArgs = runtime.GetMethod("InvokeJSWithArgs", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("Failed to find 'InvokeJSWithArgs' Method.");
 
         DynamicMethod dynamicMethod = new("<>InvokeJSWithArgs", typeof(object), new[] { typeof(int), typeof(string), typeof(object[]), typeof(IntPtr) }, module, true);
-        var ilGen = dynamicMethod.GetILGenerator();
+        ILGenerator? ilGen = dynamicMethod.GetILGenerator();
         ilGen.Emit(Ldarg_0);
         ilGen.Emit(Ldarg_1);
         ilGen.Emit(Ldarg_2);
         ilGen.Emit(Ldarg_3);
         ilGen.Emit(Call, invokeJSWithArgs);
         ilGen.Emit(Ret);
-        var del = dynamicMethod.CreateDelegate<Func<int, string, object[], IntPtr, object>>();
+        Func<int, string, object[], IntPtr, object>? del = dynamicMethod.CreateDelegate<Func<int, string, object[], IntPtr, object>>();
         return del;
     }
 
@@ -105,16 +105,16 @@ public class LowLevelJSRuntime
 
     private static Func<string, IntPtr, object> BuildGetGlobalObject()
     {
-        var getGlobalObject = runtime.GetMethod("GetGlobalObject", BindingFlags.NonPublic | BindingFlags.Static)
+        MethodInfo? getGlobalObject = runtime.GetMethod("GetGlobalObject", BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("Failed to find 'GetGlobalObject' Method.");
 
         DynamicMethod dynamicMethod = new("<>GetGlobalObject", typeof(object), new[] { typeof(string), typeof(IntPtr) }, module, true);
-        var ilGen = dynamicMethod.GetILGenerator();
+        ILGenerator? ilGen = dynamicMethod.GetILGenerator();
         ilGen.Emit(Ldarg_0);
         ilGen.Emit(Ldarg_1);
         ilGen.Emit(Call, getGlobalObject);
         ilGen.Emit(Ret);
-        var del = dynamicMethod.CreateDelegate<Func<string, IntPtr, object>>();
+        Func<string, IntPtr, object>? del = dynamicMethod.CreateDelegate<Func<string, IntPtr, object>>();
         return del;
     }
 
@@ -132,15 +132,15 @@ public class LowLevelJSRuntime
 
     private static Func<object, int> BuildGetJSHandle()
     {
-        var getJSHandle = jSObject.GetProperty("JSHandle")?.GetGetMethod()
+        MethodInfo? getJSHandle = jSObject.GetProperty("JSHandle")?.GetGetMethod()
             ?? throw new InvalidOperationException("Failed to find 'JSHandle' Property's get method.");
 
         DynamicMethod dynamicMethod = new("<>GetJSHandle", typeof(int), new[] { typeof(object) }, module, true);
-        var ilGen = dynamicMethod.GetILGenerator();
+        ILGenerator? ilGen = dynamicMethod.GetILGenerator();
         ilGen.Emit(Ldarg_0);
         ilGen.Emit(Call, getJSHandle);
         ilGen.Emit(Ret);
-        var del = dynamicMethod.CreateDelegate<Func<object, int>>();
+        Func<object, int>? del = dynamicMethod.CreateDelegate<Func<object, int>>();
         return del;
     }
 }

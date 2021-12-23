@@ -17,6 +17,8 @@ namespace Net6WorkerTest.Pages
         private string addResult = "";
         private string addTime = "";
 
+        private string reverseCallString = "";
+
         private string exceptionString = "";
 
         protected async Task OnBootClick()
@@ -35,8 +37,8 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod(nameof(SampleWorkerAssembly.Hoge.Empty));
-            System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Empty));
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             await worker.Call(method);
             stopwatch.Stop();
             methodCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
@@ -48,15 +50,33 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            var method = typeof(SampleWorkerAssembly.Hoge).GetMethod(nameof(SampleWorkerAssembly.Hoge.Add));
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Add));
             if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
             {
-                System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var answer = await worker.Call<int>(method, a, b);
                 stopwatch.Stop();
                 addResult = answer.ToString();
                 addTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
             };
+        }
+
+        protected async Task OnReverseCallClicked()
+        {
+            if (worker is null)
+            {
+                return;
+            }
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.ReverseCall));
+            Hoge.WorkerCallback = (string str) =>
+            {
+                reverseCallString += $"worker writen:{str}{Environment.NewLine}";
+            };
+            if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
+            {
+                var res = await worker.Call<int>(method, a, b);
+                reverseCallString += $"worker returns:{res.ToString()}{Environment.NewLine}";
+            }
         }
 
         protected async Task OnExceptionClicked()

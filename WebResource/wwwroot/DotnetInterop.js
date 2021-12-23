@@ -70,17 +70,24 @@ export class Interop {
     /**
      * 
      * @param {function(any,Transferable[]):void} func poseMesssage function
-     * @param {number} len length of buffer writen data.
-     * @param {number} callId call id.
      */
-    SCall(func, len, callId) {
-        if (len < 16) {
-            throw new Error("Buffer too short.");
+    StaticCall(func) {
+        const buffer = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, 7);
+        if (buffer[0] < 28) {
+            throw new Error();
         }
-        const buffer = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, len);
-        const methodName = globalThis.wasmMemory.buffer.slice(buffer[0], buffer[0] + buffer[1]);
-        const jsonBin = globalThis.wasmMemory.buffer.slice(buffer[2], buffer[2] + buffer[3]);
-        func({ t: "SCall", i: callId, d: [methodName, jsonBin] }, [methodName, jsonBin]);
+        const headerPtr = buffer[1];
+        const headerLen = buffer[2];
+        const methodNamePtr = buffer[3];
+        const methodNameLen = buffer[4];
+
+        const array = new Uint8Array(headerLen + methodNameLen);
+        const header = new Uint8Array(globalThis.wasmMemory.buffer, headerPtr, headerLen);
+        const method = new Uint8Array(globalThis.wasmMemory.buffer, methodNamePtr, methodNameLen);
+        array.set(header, 0);
+        array.set(method, headerLen);
+        const jsonBin = globalThis.wasmMemory.buffer.slice(buffer[5], buffer[5] + buffer[6]);
+        func({ t: "SCall", d: [array.buffer, jsonBin] }, [array.buffer, jsonBin]);
     }
 
     /**
@@ -122,7 +129,7 @@ export class Interop {
                 bufferArray_s[4] = jsonArg.length;
                 bufferArray_s[0] = 20;
 
-                this.dotnetReceiver(this.dotnetReceiverId, "SCall", messageId);
+                this.dotnetReceiver(this.dotnetReceiverId, "SCall", sourceId);
                 return;
 
             case "Res":
@@ -145,8 +152,9 @@ export class Interop {
 
     /**
     * Return not void result or exception.
+    * @param {function(any,Transferable[]):void} func poseMesssage function
     * */
-    ReturnResult() {
+    ReturnResult(func) {
         const bufferArray = new Int32Array(wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
 
         if (bufferArray[0] < 20) {
@@ -163,19 +171,20 @@ export class Interop {
         data.set(new Uint8Array(payload.buffer, 0, 4), 0);
         data.set(new Uint8Array(wasmMemory.buffer, this.generalBufferAddr + 4, 8), 4);
         data.set(resultArray, 12);
-        postMessage({ t: "Res", d: [data.buffer] }, null, [data.buffer]);
+        func({ t: "Res", d: [data.buffer] }, [data.buffer]);
     }
 
     /**
      * Return void result.
+     * @param {function(any,Transferable[]):void} func poseMesssage function
      * */
-    ReturnVoidResult() {
+    ReturnVoidResult(func) {
         const bufferArray = new Int32Array(wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
         if (bufferArray[0] < 12) {
             throw new Error("Buffer too short.");
         }
         const arrayBuf = wasmMemory.buffer.slice(this.generalBufferAddr, this.generalBufferAddr + 12);
-        postMessage({ t: "Res", d: [arrayBuf] }, null, [arrayBuf]);
+        func({ t: "Res", d: [arrayBuf] }, [arrayBuf]);
     }
 
     /**
