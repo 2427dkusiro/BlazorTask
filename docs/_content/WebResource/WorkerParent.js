@@ -1,9 +1,13 @@
 ﻿// @ts-check
-import JSTextDecoder from "./TextDecoder.js";
+import { Interop } from "./DotnetInterop.js";
+import { DecodeUTF8AsJSON, DecodeUTF8String } from "./DotnetInterop.js";
 
 /**
  * @typedef EnvironmentSettings
  * @property {string} WorkerScriptPath
+ * @property {string} MessageReceiverFullName
+ * */
+/*
  * @property {string} AssemblyName
  * @property {string} MessageHandlerName
  * @property {string} InitializedHandlerName
@@ -17,117 +21,91 @@ const workers = [];
 
 /**
  * @private
- * @type {Int32Array[]}
+ * @type {Interop}
  * */
-const buffers = [];
+let interop;
 
 /**
  * Configure this script.
  * @param {number} jsonPtr
  * @param {number} jsonLen
+ * @param {number} bufferLen
  * @returns {number}
  */
 export function Configure(jsonPtr, jsonLen, bufferLen) {
     /** @type EnvironmentSettings */
-    const data = DecodeUTF8JSON(jsonPtr, jsonLen);
-    workerScriptUrl = data.WorkerScriptPath
-    dotnetAssemblyName = data.AssemblyName;
-    dotnetMessageEventHandler = data.MessageHandlerName;
-    dotnetInitializedHandler = data.InitializedHandlerName;
-
-    const buffer = Module._malloc(bufferLen);
-    return buffer;
+    const settings = DecodeUTF8AsJSON(jsonPtr, jsonLen);
+    const _workerScriptUrl = settings.WorkerScriptPath;
+    if (workerScriptUrl != undefined && workerScriptUrl != _workerScriptUrl) {
+        throw new Error("Different worker script url was passed.");
+    }
+    workerScriptUrl = _workerScriptUrl;
+    const dotnetMessageRecieverFullName = settings.MessageReceiverFullName;
+    if (interop != undefined) {
+        console.error("Interop overwrite.");
+    }
+    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null);
+    return interop.generalBufferAddr;
 }
 
-/** @type {string} */
+/** @type string */
 let workerScriptUrl;
-
-/** @type {string} */
-let dotnetAssemblyName;
-
-/** @type {string} */
-let dotnetMessageEventHandler;
-
-/** @type {string} */
-let dotnetInitializedHandler;
 
 /**
  * Create a new worker then init worker.
  * @param {number} ptr pointer to utf-8 string which is json serialized init options.
  * @param {number} len length of json data in bytes.
- * @returns {number} unique worker id.
+ * @param {number} id worker id.
  */
-export function CreateWorker(ptr, len) {
-    const index = workers.length;
+export function CreateWorker(ptr, len, id) {
     const worker = new Worker(workerScriptUrl);
-    worker.onmessage = (message) => OnMessage(index, message);
+    worker.onmessage = (message) => interop.HandleMessage(message, id);
 
-    const array = new Uint8Array(wasmMemory.buffer, ptr, len);
-    const array2 = new Uint8Array(array);
-    worker.postMessage([array2.buffer], [array2.buffer]);
-    workers.push(worker);
-    buffers.push(undefined);
-    return index;
+    const arrayBuffer = wasmMemory.buffer.slice(ptr, ptr + len);
+    worker.postMessage([arrayBuffer], [arrayBuffer]);
+    InsertAt(worker, id);
 }
 
 /**
- * Allocate buffer to call worker 
- * @param {any} id worker id
- * @param {any} len buffer length in byte
- * @returns {number} buffer address or null pointer(0).
- */
-export function AllocBuffer(id, len) {
-    if (buffers[id] === undefined) {
-        const addr = Module._malloc(len);
-        const array = new Int32Array(wasmMemory.buffer, addr, len / 4);
-        buffers[id] = array;
-        return addr;
-    } else {
-        return 0;
-    }
-}
-
-export function SCall(workerId, len, callId) {
-    if (len < 16) {
-        throw new Error();
-    }
-    const buffer = buffers[workerId];
-    const methodName = wasmMemory.buffer.slice(buffer[0], buffer[0] + buffer[1]);
-    const jsonBin = wasmMemory.buffer.slice(buffer[2], buffer[2] + buffer[3]);
-    workers[workerId].postMessage({ t: "SCall", d: [methodName, jsonBin] }, [methodName, jsonBin]);
-}
-
-/**
- * Handles messge from worker.
+ * Insert worker to specified index.
  * @private
- * @param {MessageEvent} event
- * @param {Number} id worker id
- * @returns {void}
+ * @param {Worker} elem
+ * @param {number} index
  */
-function OnMessage(id, event) {
-    if (event.data.startsWith("_")) {
-        switch (event.data) {
-            case "_init":
-                DotNet.invokeMethod(dotnetAssemblyName, dotnetInitializedHandler, id);
-                break;
+function InsertAt(elem, index) {
+    if (workers.length <= index) {
+        const diff = index - workers.length + 1;
+        for (let i = 0; i < diff; i++) {
+            workers.push(undefined);
         }
     }
-    DotNet.invokeMethod(dotnetAssemblyName, dotnetMessageEventHandler, id, event.data);
+    if (workers[index] != undefined) {
+        throw new Error("Worker already exists.");
+    }
+    workers[index] = elem;
 }
 
+export function TerminateWorker(id) {
+    workers[id].terminate();
+    workers[id] = undefined;
+}
 
-const dotnetArrayOffset = 16; // offset of dotnet array from reference to binary data in bytes.
-const nativeLen = 512; // threathold of using native text decoder(for short string, using js-implemented decoder is faster.)
-const nativeDecoder = new TextDecoder();
+export function SCall(workerId) {
+    interop.StaticCall((msg, trans) => workers[workerId].postMessage(msg, trans));
+}
 
 /**
- * Parse Json encorded as UTF-8 Text
- * @param {number} ptr pointer to utf-8 string which is json serialized init options.
- * @param {number} len length of json data in bytes.
- * @returns {any}
- */
-function DecodeUTF8JSON(ptr, len) {
-    const array = new Uint8Array(wasmMemory.buffer, ptr, len);
-    const str = len > nativeLen ? nativeDecoder.decode(array) : JSTextDecoder(array);
-    return JSON.parse(str);
+ * Return not void result or exception.
+ * @param {number} source 
+ * */
+export function ReturnResult(source) {
+    interop.ReturnResult((msg, trans) => workers[source].postMessage(msg, trans));
+}
+
+/**
+ * Return void result.
+ * @param {number} source
+ * */
+export function ReturnVoidResult(source) {
+    interop.ReturnVoidResult((msg, trans) => workers[source].postMessage(msg, trans));
 }
