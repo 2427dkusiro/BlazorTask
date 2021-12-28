@@ -20,16 +20,20 @@ public class SerializedDispatcher
     /// <exception cref="ArgumentException"></exception>
     public static void CallStatic(ref CallHeader header, Span<char> methodName, Span<byte> jsonArg, long id)
     {
+        DebugHelper.Debugger.CheckPoint();
         var method = MethodNameBuilder.ToMethodInfo(methodName);
+        DebugHelper.Debugger.Assert(method is not null);
+
         var args = JsonSerializer.Deserialize<object[]>(jsonArg);
         if (args is null)
         {
-            throw new ArgumentException("Failed to desirialize json");
+            throw new ArgumentException("Failed to deserialize json");
         }
         if (!functionCache.TryGetValue(methodName, out Action<object[], long>? value))
         {
             value = ILMethodBuilder.BuildSerialized(method);
         }
         value(args, id);
+        DebugHelper.Debugger.CheckPoint();
     }
 }

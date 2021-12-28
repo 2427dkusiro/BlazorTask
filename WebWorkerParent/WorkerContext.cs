@@ -10,6 +10,13 @@ public static class WorkerContext
 {
     private static WorkerParent workerParent;
     public static WorkerParent Parent { get => workerParent ??= new WorkerParent(); }
+
+    private static JSRuntime.WorkerJSRuntime workerJSRuntime;
+    public static IJSUnmarshalledRuntime WorkerJSRuntime { get => workerJSRuntime ??= JSRuntime.WorkerJSRuntime.Singleton; }
+
+    private static HttpClient httpClient;
+
+    public static HttpClient HttpClient { get => httpClient ??= new HttpClient(); }
 }
 
 public class WorkerParent : ICallProvider

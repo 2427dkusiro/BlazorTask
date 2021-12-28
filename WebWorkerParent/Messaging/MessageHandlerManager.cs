@@ -9,6 +9,7 @@
 
         public static int CreateAtThisContext(int buffer, int bufferLength)
         {
+            DebugHelper.Debugger.Configure();
             if (parentMessageHandler is not null)
             {
                 throw new InvalidOperationException("Message handler already exists.");
@@ -44,14 +45,13 @@
 
         public static void ReceiveMessage(int targetHandler, string type, int id)
         {
-#if DEBUG
-            Console.WriteLine($"Message type:{type},target:{targetHandler},id:{id}");
-#endif
+            DebugHelper.Debugger.WriteMessage($"Message type:{type},target:{targetHandler},id:{id}");
             GetHandler(GetHandlerFromId(targetHandler)).ReceiveMessage(type, id);
         }
 
         public static void ReturnResultVoid(long id)
         {
+            DebugHelper.Debugger.CheckPoint();
             HandlerId handler = GetHandlerFromId((int)(id >> 32));
             var resultId = (int)(id & uint.MaxValue);
             GetHandler(handler).ReturnResultVoid(resultId);
@@ -59,6 +59,7 @@
 
         public static void ReturnResultSerialized<T>(T value, long id)
         {
+            DebugHelper.Debugger.CheckPoint();
             HandlerId handler = GetHandlerFromId((int)(id >> 32));
             var resultId = (int)(id & uint.MaxValue);
             GetHandler(handler).ReturnResultSerialized(value, resultId);
@@ -66,6 +67,7 @@
 
         public static void ReturnException(Exception exception, long id)
         {
+            DebugHelper.Debugger.CheckPoint();
             HandlerId handler = GetHandlerFromId((int)(id >> 32));
             var resultId = (int)(id & uint.MaxValue);
             GetHandler(handler).ReturnException(exception, resultId);

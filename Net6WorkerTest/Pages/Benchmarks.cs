@@ -57,7 +57,7 @@ public static class Benchmarks
     {
         Tester.TestConditionAccesser? result = tester.CreateNewCondition($"N={n}");
 
-        result[$"4 Threads"] = await RunMTTestInternal(tester, n, 4, workerService);
+        result[$"5 Threads"] = await RunMTTestInternal(tester, n, 5, workerService);
         // result[$"8 Threads"] = await RunMTTestInternal(tester, n, 8, workerService);
     }
 

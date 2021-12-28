@@ -22,6 +22,8 @@ internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalle
         return (TResult)result;
     }
 
+#pragma warning disable CS1998
+
     public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] TValue>(string identifier, object?[]? args)
     {
         var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, args, out _);
@@ -34,6 +36,8 @@ internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalle
         return (TValue)result;
     }
 
+#pragma warning restore
+
     public TResult InvokeUnmarshalled<TResult>(string identifier)
     {
         var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, null, out _);
@@ -42,19 +46,19 @@ internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalle
 
     public TResult InvokeUnmarshalled<T0, TResult>(string identifier, T0 arg0)
     {
-        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object[] { arg0 }, out _);
+        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object?[] { arg0 }, out _);
         return (TResult)result;
     }
 
     public TResult InvokeUnmarshalled<T0, T1, TResult>(string identifier, T0 arg0, T1 arg1)
     {
-        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object[] { arg0, arg1 }, out _);
+        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object?[] { arg0, arg1 }, out _);
         return (TResult)result;
     }
 
     public TResult InvokeUnmarshalled<T0, T1, T2, TResult>(string identifier, T0 arg0, T1 arg1, T2 arg2)
     {
-        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object[] { arg0, arg1, arg2 }, out _);
+        var result = LowLevelJSRuntime.InvokeJSWithArgs(self, identifier, new object?[] { arg0, arg1, arg2 }, out _);
         return (TResult)result;
     }
 }

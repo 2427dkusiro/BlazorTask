@@ -1,9 +1,23 @@
 ﻿namespace BlazorTask.Messaging
 {
+    /// <summary>
+    /// Represent <see cref="MessageHandler"/> ID.
+    /// </summary>
     public enum HandlerId
     {
-        Null = 0, // To detect error only.
+        /// <summary>
+        /// Reserved for detecting invalid value.
+        /// </summary>
+        Null = 0,
+
+        /// <summary>
+        /// <see cref="MessageHandler"/> to send message to its parent.
+        /// </summary>
         ThisContext = 1,
+
+        /// <summary>
+        /// <see cref="MessageHandler"/> to send message to its child worker.
+        /// </summary>
         WorkerContext = 2,
     }
 }

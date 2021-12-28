@@ -22,7 +22,7 @@ public sealed class StartWorkerTask : WorkerTask
     protected override void BeginAsyncInvoke(WorkerAwaiter workerAwaiter)
     {
         module.InvokeVoidUnmarshalledJson("CreateWorker", workerInitOption, workerId);
-        messageHandler.RegisterInitializeAwaiter(workerId, workerAwaiter);
+        messageHandler.RegistorInitializeAwaiter(workerId, workerAwaiter);
     }
 
     protected override void BlockingInvoke()
