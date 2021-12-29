@@ -6,8 +6,7 @@
 @using BlazorTask
 
 <PageTitle>Index</PageTitle>
-
-<h1>Hello, world!</h1>
+<h1>function unit tests</h1>
 
 <h3>Boot worker</h3>
 <div>
@@ -26,15 +25,16 @@
 
 <hr />
 
+<div>
+    <input @bind="inputNum1" />
+    <span>+</span>
+    <input @bind="inputNum2" />
+    <span>=</span>
+    <span>@addResult</span>
+</div>
+
 <h3>Add number at worker</h3>
 <div>
-    <div>
-        <input @bind="inputNum1" />
-        <span>+</span>
-        <input @bind="inputNum2" />
-        <span>=</span>
-        <span>@addResult</span>
-    </div>
     <div style="padding:10px 0 0 0">
         <button class="btn btn-primary" @onclick="OnAddClicked">Calculate</button>
         <span>@addTime</span>
@@ -43,7 +43,17 @@
 
 <hr />
 
-<h3>Reverse call</h3>
+<h3>Add number at worker async</h3>
+<div>
+    <div style="padding:10px 0 0 0">
+        <button class="btn btn-primary" @onclick="OnAddAsyncClicked">Calculate</button>
+        <span>@asyncAddTime</span>
+    </div>
+</div>
+
+<hr />
+
+<h3>Add number bia reverse call</h3>
 <div>
     <button class="btn btn-primary" @onclick="OnReverseCallClicked">Run</button>
     <pre>
@@ -58,5 +68,15 @@
     <button class="btn btn-primary" @onclick="OnExceptionClicked">Run</button>
     <pre>
         @exceptionString
+    </pre>
+</div>
+
+<hr />
+
+<h3>Async throw exception</h3>
+<div>
+    <button class="btn btn-primary" @onclick="OnAsyncExceptionClicked">Run</button>
+    <pre>
+        @asyncExceptionString
     </pre>
 </div>

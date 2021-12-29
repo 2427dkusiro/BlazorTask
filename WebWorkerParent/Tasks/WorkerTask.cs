@@ -14,11 +14,6 @@ namespace BlazorTask.Tasks
             BeginAsyncInvoke(awaiter);
             return awaiter;
         }
-
-        public async Task AsTask()
-        {
-            await this;
-        }
     }
 
     public abstract class WorkerTask<T>
@@ -32,11 +27,6 @@ namespace BlazorTask.Tasks
             var awaiter = new WorkerAwaiter<T>();
             BeginAsyncInvoke(awaiter);
             return awaiter;
-        }
-
-        public async Task<T> AsTask()
-        {
-            return await this;
         }
     }
 

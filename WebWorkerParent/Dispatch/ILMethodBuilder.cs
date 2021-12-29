@@ -165,7 +165,11 @@ internal static class ILMethodBuilder
             generator.Emit(Ldloc_1);
             generator.Emit(Ldarg_1);
             Type[]? genericParam = methodInfo.ReturnType.GetGenericArguments();
-            generator.Emit(Call, ReturnAsyncValue.MakeGenericMethod(methodInfo.ReturnType));
+            if (genericParam.Length != 1)
+            {
+                throw new InvalidOperationException("Task<T> mush have 1 generic parameter.");
+            }
+            generator.Emit(Call, ReturnAsyncValue.MakeGenericMethod(genericParam[0]));
         }
         else
         {

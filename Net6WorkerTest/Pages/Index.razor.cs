@@ -15,11 +15,15 @@ namespace Net6WorkerTest.Pages
         private string inputNum1;
         private string inputNum2;
         private string addResult = "";
+
         private string addTime = "";
+        private string asyncAddTime = "";
 
         private string reverseCallString = "";
 
         private string exceptionString = "";
+
+        private string asyncExceptionString = "";
 
         protected async Task OnBootClick()
         {
@@ -61,6 +65,23 @@ namespace Net6WorkerTest.Pages
             };
         }
 
+        protected async Task OnAddAsyncClicked()
+        {
+            if (worker is null)
+            {
+                return;
+            }
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.AsyncAdd));
+            if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var answer = await worker.Call<int>(method, a, b);
+                stopwatch.Stop();
+                addResult = answer.ToString();
+                asyncAddTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
+            };
+        }
+
         protected async Task OnReverseCallClicked()
         {
             if (worker is null)
@@ -71,6 +92,7 @@ namespace Net6WorkerTest.Pages
             Hoge.WorkerCallback = (string str) =>
             {
                 reverseCallString += $"worker writen:{str}{Environment.NewLine}";
+                StateHasChanged();
             };
             if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
             {
@@ -92,6 +114,22 @@ namespace Net6WorkerTest.Pages
             catch (Exception ex)
             {
                 exceptionString = ex.ToString();
+            }
+        }
+
+        protected async Task OnAsyncExceptionClicked()
+        {
+            if (worker is null)
+            {
+                return;
+            }
+            try
+            {
+                await worker.Call(typeof(Hoge).GetMethod(nameof(Hoge.AsyncException))!);
+            }
+            catch (Exception ex)
+            {
+                asyncExceptionString = ex.ToString();
             }
         }
     }

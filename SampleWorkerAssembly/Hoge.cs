@@ -30,6 +30,19 @@
         {
             throw new NotImplementedException();
         }
+
+        public static async Task<int> AsyncAdd(int a, int b)
+        {
+            await Task.Yield();
+            return a + b;
+        }
+
+        public static async Task AsyncException()
+        {
+            await Task.Yield();
+            throw new NotImplementedException();
+            await Task.Yield();
+        }
     }
 
     public static class MathsService
