@@ -282,7 +282,7 @@ function PostRun() {
     _mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
-    postMessage({ t: "Init" });
+    postMessage({ t: "Init" }, null, null);
 }
 
 // #region typedef
@@ -509,7 +509,7 @@ let interop;
  * @returns {void}
  * */
 function InitializeMessagingService() {
-    interop = new Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName);
+    interop = new Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName, jsExecutePath);
 }
 
 /**

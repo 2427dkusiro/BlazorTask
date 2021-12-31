@@ -89,13 +89,13 @@ public class Worker : IDisposable, ICallProvider
 
     private SerializedCallWorkerTask SerializedCall(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask(jSRuntime, header, methodName, arg, workerId, messageHandler);
     }
 
     private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask<T>(jSRuntime, header, methodName, arg, workerId, messageHandler);
     }
 

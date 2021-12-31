@@ -12,7 +12,7 @@ class Interop {
      * @param {string} receiverName
      * @param {string} getReceiverMethodName
      */
-    constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName) {
+    constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName, baseAddress) {
         if (isFromParent) {
             if (generalBufferLength == undefined) {
                 generalBufferLength = defaultGeneralBufferLength;
@@ -32,6 +32,7 @@ class Interop {
             this.dotnetReceiverId = globalThis.Module.mono_call_static_method(getReceiverMethodName, [this.generalBufferAddr, generalBufferLength]);
             this.dotnetReceiver = globalThis.Module.mono_bind_static_method(receiverName);
         }
+        this.baseUrl = baseAddress;
     }
 
     /** @type number 
@@ -64,6 +65,11 @@ class Interop {
      *  @private
      */
     dataBufferLength;
+
+    /** @type string
+     *  @private
+     */
+    baseUrl;
 
     /**
      * 
@@ -183,6 +189,19 @@ class Interop {
         }
         const arrayBuf = globalThis.wasmMemory.buffer.slice(this.generalBufferAddr, this.generalBufferAddr + 12);
         func({ t: "Res", d: [arrayBuf] }, [arrayBuf]);
+    }
+
+    AssignSyncCallSourceId() {
+        const requestUrl = "_content/WebResource/Dummy.txt";
+
+        const xhr = new XMLHttpRequest();
+        const url = new URL(requestUrl, this.baseUrl);
+        url.searchParams.set("action", "GetId");
+        xhr.open("GET", url.toString(), false);
+        xhr.send(null);
+
+        const responce = xhr.responseText;
+        console.info(responce);
     }
 
     /**

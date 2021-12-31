@@ -39,13 +39,13 @@ public class WorkerParent : ICallProvider
 
     private SerializedCallWorkerTask SerializedCall(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask(JSRuntime, header, methodName, arg, 0, MessageHandler);
     }
 
     private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask<T>(JSRuntime, header, methodName, arg, 0, MessageHandler);
     }
 }

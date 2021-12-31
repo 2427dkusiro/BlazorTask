@@ -12,8 +12,8 @@ namespace Net6WorkerTest.Pages
 
         private string methodCallTime = "";
 
-        private string inputNum1;
-        private string inputNum2;
+        private string? inputNum1;
+        private string? inputNum2;
         private string addResult = "";
 
         private string addTime = "";
@@ -35,15 +35,28 @@ namespace Net6WorkerTest.Pages
             workerBootTime = $"Create Worker：{watch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
         }
 
-        protected async Task OnRunClicked()
+        protected async Task OnRunVoidClicked()
         {
             if (worker is null)
             {
                 return;
             }
-            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Empty));
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Empty))!;
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             await worker.Call(method);
+            stopwatch.Stop();
+            methodCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
+        }
+
+        protected void OnRunSyncVoidClicked()
+        {
+            if (worker is null)
+            {
+                return;
+            }
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Empty))!;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            worker.Call(method).Wait();
             stopwatch.Stop();
             methodCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
         }
@@ -54,7 +67,7 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Add));
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.Add))!;
             if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -71,7 +84,7 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.AsyncAdd));
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.AsyncAdd))!;
             if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -88,7 +101,7 @@ namespace Net6WorkerTest.Pages
             {
                 return;
             }
-            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.ReverseCall));
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.ReverseCall))!;
             Hoge.WorkerCallback = (string str) =>
             {
                 reverseCallString += $"worker writen:{str}{Environment.NewLine}";

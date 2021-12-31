@@ -14,6 +14,11 @@ namespace BlazorTask.Tasks
             BeginAsyncInvoke(awaiter);
             return awaiter;
         }
+
+        public void Wait()
+        {
+            BlockingInvoke();
+        }
     }
 
     public abstract class WorkerTask<T>
@@ -27,6 +32,13 @@ namespace BlazorTask.Tasks
             var awaiter = new WorkerAwaiter<T>();
             BeginAsyncInvoke(awaiter);
             return awaiter;
+        }
+
+        private T? syncResult;
+
+        public void Wait()
+        {
+            syncResult = BlockingInvoke();
         }
     }
 

@@ -13,8 +13,9 @@ export class Interop {
      * @param {number} generalBufferLength
      * @param {string} receiverName
      * @param {string} getReceiverMethodName
+     * @param {string} baseAddress
      */
-    constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName) {
+    constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName, baseAddress) {
         if (isFromParent) {
             if (generalBufferLength == undefined) {
                 generalBufferLength = defaultGeneralBufferLength;
@@ -34,6 +35,7 @@ export class Interop {
             this.dotnetReceiverId = globalThis.Module.mono_call_static_method(getReceiverMethodName, [this.generalBufferAddr, generalBufferLength]);
             this.dotnetReceiver = globalThis.Module.mono_bind_static_method(receiverName);
         }
+        this.baseUrl = baseAddress;
     }
 
     /** @type number 
@@ -48,12 +50,10 @@ export class Interop {
     dotnetReceiver;
 
     /** @type number 
-     *  @private
      */
     generalBufferAddr;
 
     /** @type number 
-     *  @private
      */
     generalBufferLength;
 
@@ -66,6 +66,11 @@ export class Interop {
      *  @private
      */
     dataBufferLength;
+
+    /** @type string
+     *  @private
+     */
+    baseUrl;
 
     /**
      * 
@@ -186,6 +191,47 @@ export class Interop {
         const arrayBuf = globalThis.wasmMemory.buffer.slice(this.generalBufferAddr, this.generalBufferAddr + 12);
         func({ t: "Res", d: [arrayBuf] }, [arrayBuf]);
     }
+
+    AssignSyncCallSourceId() {
+        const requestUrl = "_content/WebResource/Dummy.txt";
+
+        const xhr = new XMLHttpRequest();
+        const url = new URL(requestUrl, this.baseUrl);
+        url.searchParams.set("action", "GetId");
+        xhr.open("GET", url.toString(), false);
+        xhr.send(null);
+
+        const responce = xhr.responseText;
+        const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+        bufferArray_r[0] = 0;
+
+        if (responce === "6MENWdyDt0p4Qnp9IGYL4OSYj2/Ns9k6uv8yONpN2ph2zNKm+ILRdnvkvl9H7dqFQB+K7aXXDTXo057dUH5vKg") {
+            bufferArray_r[1] = -1;
+        } else {
+            bufferArray_r[1] = parseInt(responce);
+        }
+        bufferArray_r[0] = 8;
+    }
+
+    async AssignSyncCallSourceIdAsync() {
+        const requestUrl = "_content/WebResource/Dummy.txt";
+
+        const url = new URL(requestUrl, this.baseUrl);
+        url.searchParams.set("action", "GetId");
+        const _responce = await fetch(url.toString());
+        const responce = await _responce.text();
+
+        const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+        bufferArray_r[0] = 0;
+
+        if (responce === "6MENWdyDt0p4Qnp9IGYL4OSYj2/Ns9k6uv8yONpN2ph2zNKm+ILRdnvkvl9H7dqFQB+K7aXXDTXo057dUH5vKg") {
+            bufferArray_r[1] = -1;
+        } else {
+            bufferArray_r[1] = parseInt(responce);
+        }
+        bufferArray_r[0] = 8;
+    }
+
 
     /**
     * Ensure that argument buffer length is longer than or equals specify length.

@@ -19,6 +19,16 @@ public readonly struct CallHeader
     }
 
     /// <summary>
+    /// Create new instance of <see cref="CallHeader"/>.
+    /// </summary>
+    /// <param name="callType"></param>
+    public CallHeader(int callId, CallType callType)
+    {
+        this.callId = callId;
+        this.callType = callType;
+    }
+
+    /// <summary>
     // Size of this struct in bytes.
     /// </summary>
     public readonly int payloadLength = 12;
@@ -40,9 +50,9 @@ public readonly struct CallHeader
     public enum CallType : int
     {
         /// <summary>
-        /// Call static method
+        /// Call static method async.
         /// </summary>
-        Static = 0,
+        Default = 0,
 
         /// <summary>
         /// Instance method call.
@@ -54,6 +64,10 @@ public readonly struct CallHeader
         /// </summary>
         Ctor = 2,
 
+        /// <summary>
+        /// Call sync
+        /// </summary>
+        Sync = 4,
     }
 }
 

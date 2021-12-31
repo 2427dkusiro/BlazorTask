@@ -24,6 +24,13 @@ public abstract class MessageHandler
     /// </summary>
     /// <param name="name"></param>
     /// <param name="arg0"></param>
+    protected abstract void JSInvokeVoid(string name);
+
+    /// <summary>
+    /// If be override in inherited class, invoke javascript.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="arg0"></param>
     protected abstract void JSInvokeVoid(string name, int arg0);
 
     /// <summary>
@@ -100,7 +107,7 @@ public abstract class MessageHandler
     /// </summary>
     internal int CallReceiveId { get => _callReceiveId++; }
 
-    private Dictionary<int, (int sourceId, CallHeader header)> headers = new();
+    private readonly Dictionary<int, (int sourceId, CallHeader header)> headers = new();
 
     /// <summary>
     /// Handle a message which requests calling method.
@@ -152,19 +159,53 @@ public abstract class MessageHandler
         var dataPtr = (int*)dataAddr;
         var payload = dataPtr[0];
         var callId = dataPtr[1];
-        var resultType = dataPtr[2];
+        var resultType = (CallResultTypes)dataPtr[2];
 
         switch (resultType)
         {
-            case 0:
+            case CallResultTypes.SuccessedVoid:
                 callResultTokens[callId].SetResultFromJson(null);
                 return;
-            case 2:
+            case CallResultTypes.SuccessedJson:
                 callResultTokens[callId].SetResultFromJson(new Span<byte>(dataPtr + 3, payload - 12));
                 return;
-            case 4:
+            case CallResultTypes.Exception:
                 callResultTokens[callId].SetException(new Span<byte>(dataPtr + 3, payload - 12));
                 return;
+        }
+    }
+
+    /// <summary>
+    /// Call method from json serialized arguments.
+    /// </summary>
+    /// <param name="callHeader"></param>
+    /// <param name="methodName"></param>
+    /// <param name="args"></param>
+    /// <param name="workerId"></param>
+    /// <param name="workerAwaiter"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public unsafe void CallSerializedSync(CallHeader callHeader, string methodName, byte[] args, int workerId)
+    {
+        if (bufferLength < 28)
+        {
+            throw new InvalidOperationException("Buffer too short");
+        }
+        fixed (char* methodNamePtr = methodName)
+        {
+            fixed (byte* argPtr = args)
+            {
+                var ptr = (int*)buffer.ToPointer();
+                ptr[0] = 0;
+                ptr[1] = (int)&callHeader;
+                ptr[2] = callHeader.payloadLength;
+                ptr[3] = (int)methodNamePtr;
+                ptr[4] = methodName.Length * sizeof(char);
+                ptr[5] = (int)argPtr;
+                ptr[6] = args.Length;
+                ptr[0] = 28;
+
+                JSInvokeVoid("SCall", workerId);
+            }
         }
     }
 
@@ -242,7 +283,7 @@ public abstract class MessageHandler
         var ptr = (int*)buffer.ToPointer();
         ptr[0] = 0;
         ptr[1] = header.callId;
-        ptr[2] = 0;
+        ptr[2] = (int)CallResultTypes.SuccessedVoid;
         ptr[0] = 12;
         JSInvokeVoid("ReturnVoidResult", source);
     }
@@ -261,11 +302,14 @@ public abstract class MessageHandler
         fixed (void* jsonPtr = json)
         {
             ptr[1] = header.callId;
-            ptr[2] = 2;
+            ptr[2] = (int)CallResultTypes.SuccessedJson;
             ptr[3] = (int)jsonPtr;
             ptr[4] = json.Length;
             ptr[0] = 20;
-            JSInvokeVoid("ReturnResult", source);
+            if (((int)header.callType & (int)CallHeader.CallType.Sync) == 0)
+            {
+                JSInvokeVoid("ReturnResult", source);
+            }
         }
     }
 
@@ -286,11 +330,24 @@ public abstract class MessageHandler
         fixed (void* jsonPtr = json)
         {
             ptr[1] = header.callId;
-            ptr[2] = 4;
+            ptr[2] = (int)CallResultTypes.Exception;
             ptr[3] = (int)jsonPtr;
             ptr[4] = json.Length;
             ptr[0] = 20;
             JSInvokeVoid("ReturnResult", source);
         }
+    }
+
+    public unsafe int GetSyncCallSourceId()
+    {
+        JSInvokeVoid("AssignSyncCallSourceId");
+        var ptr = (int*)buffer.ToPointer();
+        var length = ptr[0];
+        if (length < 8)
+        {
+            throw new InvalidOperationException("Buffer too short");
+        }
+
+        return ptr[1];
     }
 }
