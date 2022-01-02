@@ -35,9 +35,10 @@ public sealed class SerializedCallWorkerTask : WorkerTask
         var option = callHeader.callType;
 
         var sourceId = messageHandler.GetSyncCallSourceId();
+        Console.WriteLine($"source ID:{sourceId}");
 
 #warning デバッグ用
-        sourceId = 1;
+        // sourceId = 1;
 
         if (sourceId == -1)
         {
@@ -93,7 +94,7 @@ public sealed class SerializedCallWorkerTask<T> : WorkerTask<T>
         var sourceId = messageHandler.GetSyncCallSourceId();
 
 #warning デバッグ用
-        sourceId = 1;
+        // sourceId = 1;
 
         if (sourceId == -1)
         {

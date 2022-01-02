@@ -555,3 +555,7 @@ function ReturnVoidResult(source) {
     }
     interop.ReturnVoidResult((msg, trans) => globalThis.postMessage(msg, null, trans));
 }
+
+function AssignSyncCallSourceId() {
+    interop.AssignSyncCallSourceId();
+}

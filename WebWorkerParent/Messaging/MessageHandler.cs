@@ -24,14 +24,14 @@ public abstract class MessageHandler
     /// </summary>
     /// <param name="name"></param>
     /// <param name="arg0"></param>
-    protected abstract void JSInvokeVoid(string name);
+    protected abstract void InvokeJSVoid(string name);
 
     /// <summary>
     /// If be override in inherited class, invoke javascript.
     /// </summary>
     /// <param name="name"></param>
     /// <param name="arg0"></param>
-    protected abstract void JSInvokeVoid(string name, int arg0);
+    protected abstract void InvokeJSVoid(string name, int arg0);
 
     /// <summary>
     /// Set the buffer address and its length.
@@ -204,7 +204,7 @@ public abstract class MessageHandler
                 ptr[6] = args.Length;
                 ptr[0] = 28;
 
-                JSInvokeVoid("SCall", workerId);
+                InvokeJSVoid("SCall", workerId);
             }
         }
     }
@@ -238,7 +238,7 @@ public abstract class MessageHandler
                 ptr[6] = args.Length;
                 ptr[0] = 28;
 
-                JSInvokeVoid("SCall", workerId);
+                InvokeJSVoid("SCall", workerId);
             }
         }
         var token = new CallResultToken(workerAwaiter);
@@ -265,7 +265,7 @@ public abstract class MessageHandler
                 ptr[6] = args.Length;
                 ptr[0] = 28;
 
-                JSInvokeVoid("SCall", workerId);
+                InvokeJSVoid("SCall", workerId);
             }
         }
         var token = new CallResultToken<T>(workerAwaiter);
@@ -285,7 +285,16 @@ public abstract class MessageHandler
         ptr[1] = header.callId;
         ptr[2] = (int)CallResultTypes.SuccessedVoid;
         ptr[0] = 12;
-        JSInvokeVoid("ReturnVoidResult", source);
+        if (((int)header.callType & (int)CallHeader.CallType.Sync) == 0)
+        {
+            DebugHelper.Debugger.CheckPoint();
+            InvokeJSVoid("ReturnVoidResult", source);
+        }
+        else
+        {
+            DebugHelper.Debugger.CheckPoint();
+            InvokeJSVoid("ReturnVoidResultSync");
+        }
     }
 
     public unsafe void ReturnResultSerialized<T>(T value, int resultId)
@@ -308,14 +317,20 @@ public abstract class MessageHandler
             ptr[0] = 20;
             if (((int)header.callType & (int)CallHeader.CallType.Sync) == 0)
             {
-                JSInvokeVoid("ReturnResult", source);
+                DebugHelper.Debugger.CheckPoint();
+                InvokeJSVoid("ReturnResult", source);
+            }
+            else
+            {
+                DebugHelper.Debugger.CheckPoint();
+                InvokeJSVoid("ReturnResultSync");
             }
         }
     }
 
     public unsafe void ReturnException(Exception exception, int resultId)
     {
-        Console.WriteLine($"a exception was thrown:{exception}");
+        DebugHelper.Debugger.WriteMessage($"a exception was thrown:{exception}");
 
         if (bufferLength < 20)
         {
@@ -334,13 +349,22 @@ public abstract class MessageHandler
             ptr[3] = (int)jsonPtr;
             ptr[4] = json.Length;
             ptr[0] = 20;
-            JSInvokeVoid("ReturnResult", source);
+            if (((int)header.callType & (int)CallHeader.CallType.Sync) == 0)
+            {
+                DebugHelper.Debugger.CheckPoint();
+                InvokeJSVoid("ReturnResult", source);
+            }
+            else
+            {
+                DebugHelper.Debugger.CheckPoint();
+                InvokeJSVoid("ReturnResultSync");
+            }
         }
     }
 
     public unsafe int GetSyncCallSourceId()
     {
-        JSInvokeVoid("AssignSyncCallSourceId");
+        InvokeJSVoid("AssignSyncCallSourceId");
         var ptr = (int*)buffer.ToPointer();
         var length = ptr[0];
         if (length < 8)

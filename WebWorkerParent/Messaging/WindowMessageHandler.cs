@@ -10,12 +10,12 @@
             Id = id;
         }
 
-        protected override void JSInvokeVoid(string name)
+        protected override void InvokeJSVoid(string name)
         {
             _ = module.InvokeUnmarshalled<object?>(name);
         }
 
-        protected override void JSInvokeVoid(string name, int arg0)
+        protected override void InvokeJSVoid(string name, int arg0)
         {
             _ = module.InvokeUnmarshalled<int, object?>(name, arg0);
         }

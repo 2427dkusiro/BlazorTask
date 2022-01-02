@@ -11,6 +11,7 @@ class Interop {
      * @param {number} generalBufferLength
      * @param {string} receiverName
      * @param {string} getReceiverMethodName
+     * @param {string} baseAddress
      */
     constructor(isFromParent, generalBufferLength, receiverName, getReceiverMethodName, baseAddress) {
         if (isFromParent) {
@@ -47,12 +48,10 @@ class Interop {
     dotnetReceiver;
 
     /** @type number 
-     *  @private
      */
     generalBufferAddr;
 
     /** @type number 
-     *  @private
      */
     generalBufferLength;
 
@@ -194,15 +193,52 @@ class Interop {
     AssignSyncCallSourceId() {
         const requestUrl = "_content/WebResource/Dummy.txt";
 
+        console.log("---log---")
         const xhr = new XMLHttpRequest();
-        const url = new URL(requestUrl, this.baseUrl);
+        let url;
+        try {
+            url = new URL(requestUrl, this.baseUrl);
+        } catch (er) {
+            console.error(er);
+        }
         url.searchParams.set("action", "GetId");
+        console.log(url);
         xhr.open("GET", url.toString(), false);
         xhr.send(null);
 
         const responce = xhr.responseText;
-        console.info(responce);
+        console.log(responce);
+        const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+        bufferArray_r[0] = 0;
+
+        if (responce === "6MENWdyDt0p4Qnp9IGYL4OSYj2/Ns9k6uv8yONpN2ph2zNKm+ILRdnvkvl9H7dqFQB+K7aXXDTXo057dUH5vKg") {
+            bufferArray_r[1] = -1;
+        } else {
+            bufferArray_r[1] = parseInt(responce);
+        }
+        bufferArray_r[0] = 8;
+        console.log(bufferArray_r);
     }
+
+    async AssignSyncCallSourceIdAsync() {
+        const requestUrl = "_content/WebResource/Dummy.txt";
+
+        const url = new URL(requestUrl, this.baseUrl);
+        url.searchParams.set("action", "GetId");
+        const _responce = await fetch(url.toString());
+        const responce = await _responce.text();
+
+        const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
+        bufferArray_r[0] = 0;
+
+        if (responce === "6MENWdyDt0p4Qnp9IGYL4OSYj2/Ns9k6uv8yONpN2ph2zNKm+ILRdnvkvl9H7dqFQB+K7aXXDTXo057dUH5vKg") {
+            bufferArray_r[1] = -1;
+        } else {
+            bufferArray_r[1] = parseInt(responce);
+        }
+        bufferArray_r[0] = 8;
+    }
+
 
     /**
     * Ensure that argument buffer length is longer than or equals specify length.

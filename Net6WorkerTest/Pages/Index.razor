@@ -25,14 +25,6 @@
 
 <hr />
 
-<h3>Call sync method at worker</h3>
-<div>
-    <button class="btn btn-primary" @onclick="OnRunSyncVoidClicked">Run</button>
-    <span>@methodCallTime</span>
-</div>
-
-<hr />
-
 <div>
     <input @bind="inputNum1" />
     <span>+</span>
@@ -66,6 +58,17 @@
     <button class="btn btn-primary" @onclick="OnReverseCallClicked">Run</button>
     <pre>
         @reverseCallString
+    </pre>
+</div>
+
+<hr />
+
+<h3>Call sync method at worker</h3>
+<div>
+    <button class="btn btn-primary" @onclick="OnRunSyncVoidClicked">Run</button>
+    <span>@syncMethodCallTime</span>
+    <pre>
+        @syncReverseCallString
     </pre>
 </div>
 

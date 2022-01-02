@@ -26,6 +26,13 @@
             return answer;
         }
 
+        public static int SyncReverseCall(int a, int b)
+        {
+            var answer = a + b;
+            BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswer)), answer).Wait();
+            return answer;
+        }
+
         public static void Exception()
         {
             throw new NotImplementedException();
@@ -41,7 +48,6 @@
         {
             await Task.Yield();
             throw new NotImplementedException();
-            await Task.Yield();
         }
     }
 
