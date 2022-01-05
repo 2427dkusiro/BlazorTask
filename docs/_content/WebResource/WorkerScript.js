@@ -430,7 +430,7 @@ async function FetchResource(fileName) {
 
         if (resourceDecoderPath != null) {
             /** @type function */
-            const func = globalThis[resourceDecodeMathodName];
+            const func = globalThis[resourceDecodeMathodName]();
             return func.call(null, new Int8Array(arrayBuffer));
         } else {
             return new Uint8Array(arrayBuffer);
