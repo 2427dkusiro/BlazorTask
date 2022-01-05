@@ -6,6 +6,7 @@ import { DecodeUTF8AsJSON, DecodeUTF8String } from "./DotnetInterop.js";
  * @typedef EnvironmentSettings
  * @property {string} WorkerScriptPath
  * @property {string} MessageReceiverFullName
+ * @property {string} BasePath
  * */
 /*
  * @property {string} AssemblyName
@@ -44,7 +45,7 @@ export function Configure(jsonPtr, jsonLen, bufferLen) {
     if (interop != undefined) {
         console.error("Interop overwrite.");
     }
-    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null);
+    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null, settings.BasePath);
     return interop.generalBufferAddr;
 }
 
@@ -108,4 +109,16 @@ export function ReturnResult(source) {
  * */
 export function ReturnVoidResult(source) {
     interop.ReturnVoidResult((msg, trans) => workers[source].postMessage(msg, trans));
+}
+
+export function AssignSyncCallSourceId() {
+    interop.AssignSyncCallSourceId();
+}
+
+export function ReturnResultSync() {
+    interop.ReturnResult((msg, trans) => navigator.serviceWorker.controller.postMessage(msg, trans));
+}
+
+export function ReturnVoidResultSync() {
+    interop.ReturnVoidResult((msg, trans) => navigator.serviceWorker.controller.postMessage(msg, trans));
 }

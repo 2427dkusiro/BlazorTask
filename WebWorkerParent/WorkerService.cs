@@ -48,7 +48,7 @@ public sealed class WorkerService
 
         if (configFunc is not null)
         {
-            var config = new WorkerServiceConfig(JSEnvironmentSetting.Default, WorkerInitializeSetting.Default);
+            var config = new WorkerServiceConfig(JSEnvironmentSetting.Default with { BasePath = httpClient.BaseAddress.AbsoluteUri }, WorkerInitializeSetting.Default);
             var helper = new WorkerServiceConfigHelper(httpClient, jSRuntime);
             WorkerServiceConfig result = await configFunc(helper).ApplyAllAsync(config);
             this.config = result;

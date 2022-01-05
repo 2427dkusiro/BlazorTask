@@ -31,7 +31,31 @@ public sealed class SerializedCallWorkerTask : WorkerTask
 
     protected override void BlockingInvoke()
     {
-        throw new NotImplementedException();
+        var callId = callHeader.callId;
+        var option = callHeader.callType;
+
+        var sourceId = messageHandler.GetSyncCallSourceId();
+        Console.WriteLine($"source ID:{sourceId}");
+
+#warning デバッグ用
+        // sourceId = 1;
+
+        if (sourceId == -1)
+        {
+            throw new PlatformNotSupportedException("service-worker not available or not configured.");
+        }
+        if (sourceId > byte.MaxValue)
+        {
+            throw new OverflowException();
+        }
+        if (callId >= (1 << 24))
+        {
+            throw new OverflowException();
+        }
+        callId = (sourceId << 24) | callId;
+        option |= CallHeader.CallType.Sync;
+        var newHeader = new CallHeader(callId, option);
+        messageHandler.CallSerializedSync(newHeader, methodName, args, workerId);
     }
 }
 
@@ -64,6 +88,31 @@ public sealed class SerializedCallWorkerTask<T> : WorkerTask<T>
 
     protected override T BlockingInvoke()
     {
+        var callId = callHeader.callId;
+        var option = callHeader.callType;
+
+        var sourceId = messageHandler.GetSyncCallSourceId();
+
+#warning デバッグ用
+        // sourceId = 1;
+
+        if (sourceId == -1)
+        {
+            throw new PlatformNotSupportedException("service-worker not available or not configured.");
+        }
+        if (sourceId > byte.MaxValue)
+        {
+            throw new OverflowException();
+        }
+        if (callId >= (1 << 24))
+        {
+            throw new OverflowException();
+        }
+        callId = (sourceId << 24) | callId;
+        option |= CallHeader.CallType.Sync;
+        var newHeader = new CallHeader(callId, option);
+        messageHandler.CallSerializedSync(newHeader, methodName, args, workerId);
+
         throw new NotImplementedException();
     }
 }

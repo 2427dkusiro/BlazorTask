@@ -56,7 +56,7 @@ public class LowLevelJSRuntime
         return del;
     }
 
-    private static Func<int, string, object[], IntPtr, object>? _invokeJSWithArgs;
+    private static Func<int, string, object?[]?, IntPtr, object>? _invokeJSWithArgs;
 
     /// <summary>
     /// Invoke JavaScript with arguments.
@@ -66,13 +66,13 @@ public class LowLevelJSRuntime
     /// <param name="parms">Arguments to pass to JS.</param>
     /// <param name="exceptionalResult">Error code.</param>
     /// <returns></returns>
-    public static unsafe object InvokeJSWithArgs(int jsObjHandle, string method, object[] parms, out int exceptionalResult)
+    public static unsafe object InvokeJSWithArgs(int jsObjHandle, string method, object?[]? parms, out int exceptionalResult)
     {
         exceptionalResult = 0;
         return (_invokeJSWithArgs ??= BuildInvokeJSWithArgs())(jsObjHandle, method, parms, (IntPtr)Unsafe.AsPointer(ref exceptionalResult));
     }
 
-    private static Func<int, string, object[], IntPtr, object> BuildInvokeJSWithArgs()
+    private static Func<int, string, object?[]?, IntPtr, object> BuildInvokeJSWithArgs()
     {
         MethodInfo? invokeJSWithArgs = runtime.GetMethod("InvokeJSWithArgs", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("Failed to find 'InvokeJSWithArgs' Method.");
@@ -85,7 +85,7 @@ public class LowLevelJSRuntime
         ilGen.Emit(Ldarg_3);
         ilGen.Emit(Call, invokeJSWithArgs);
         ilGen.Emit(Ret);
-        Func<int, string, object[], IntPtr, object>? del = dynamicMethod.CreateDelegate<Func<int, string, object[], IntPtr, object>>();
+        Func<int, string, object?[]?, IntPtr, object>? del = dynamicMethod.CreateDelegate<Func<int, string, object?[]?, IntPtr, object>>();
         return del;
     }
 

@@ -5,9 +5,17 @@ namespace BlazorTask.Dispatch;
 
 internal static class MethodNameBuilder
 {
+    /// <summary>
+    /// Get a string which identify the method.
+    /// </summary>
+    /// <param name="methodInfo"></param>
+    /// <returns></returns>
+    /// <exception cref="NotSupportedException"></exception>
+    /// <exception cref="NotImplementedException"></exception>
     public static string ToIdentifier(this MethodInfo methodInfo)
     {
-        if (methodInfo.IsGenericMethod || methodInfo.DeclaringType.IsGenericType || methodInfo.GetParameters().Any(x => x.ParameterType.IsGenericType))
+        Type? declaringType = methodInfo.DeclaringType ?? throw new NotSupportedException("No declaring type.");
+        if (methodInfo.IsGenericMethod || declaringType.IsGenericType || methodInfo.GetParameters().Any(x => x.ParameterType.IsGenericType))
         {
             throw new NotImplementedException();
         }
@@ -72,10 +80,13 @@ internal static class MethodNameBuilder
     /// <exception cref="InvalidOperationException"></exception>
     public static MethodInfo ToMethodInfo(Span<char> span)
     {
-        return TypeStringReader.Find(span);
+        return MethodStringReader.Find(span);
     }
 
-    private static class TypeStringReader
+    /// <summary>
+    /// Provide reading method indentify string.
+    /// </summary>
+    private static class MethodStringReader
     {
         private static MethodInfo Build(Type declearingType, string methodName, Type[] arguments)
         {
@@ -202,6 +213,12 @@ internal static class MethodNameBuilder
             return type;
         }
 
+        /// <summary>
+        /// Count specify charactor in the span.
+        /// </summary>
+        /// <param name="span"></param>
+        /// <param name="c"></param>
+        /// <returns></returns>
         private static int Count(Span<char> span, char c)
         {
             var count = 0;

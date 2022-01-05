@@ -8,16 +8,30 @@ namespace BlazorTask.Tasks
 
         protected abstract void BlockingInvoke();
 
+        private WorkerTaskMode workerTaskMode = WorkerTaskMode.NotDecided;
+
         public WorkerAwaiter GetAwaiter()
         {
+            if (workerTaskMode != WorkerTaskMode.NotDecided)
+            {
+                throw new InvalidOperationException("This task is already started.");
+            }
+            workerTaskMode = WorkerTaskMode.Async;
+
             var awaiter = new WorkerAwaiter();
             BeginAsyncInvoke(awaiter);
             return awaiter;
         }
 
-        public async Task AsTask()
+        public void Wait()
         {
-            await this;
+            if(workerTaskMode != WorkerTaskMode.NotDecided)
+            {
+                throw new InvalidOperationException("This task is already started.");
+            }
+            workerTaskMode = WorkerTaskMode.Sync;
+
+            BlockingInvoke();
         }
     }
 
@@ -27,17 +41,52 @@ namespace BlazorTask.Tasks
 
         protected abstract T BlockingInvoke();
 
+        private WorkerTaskMode workerTaskMode = WorkerTaskMode.NotDecided;
+
         public WorkerAwaiter<T> GetAwaiter()
         {
+            if (workerTaskMode != WorkerTaskMode.NotDecided)
+            {
+                throw new InvalidOperationException("This task is already started.");
+            }
+            workerTaskMode = WorkerTaskMode.Async;
+
             var awaiter = new WorkerAwaiter<T>();
             BeginAsyncInvoke(awaiter);
             return awaiter;
         }
 
-        public async Task<T> AsTask()
+        private T? result;
+
+        public void Wait()
         {
-            return await this;
+            if (workerTaskMode != WorkerTaskMode.NotDecided)
+            {
+                throw new InvalidOperationException("This task is already started.");
+            }
+            workerTaskMode = WorkerTaskMode.Sync;
+
+            result = BlockingInvoke();
         }
+
+        public T Result
+        {
+            get
+            {
+                if (result is null)
+                {
+                    Wait();
+                }
+                return result!;
+            }
+        }
+    }
+
+    internal enum WorkerTaskMode
+    {
+        NotDecided,
+        Async,
+        Sync,
     }
 
     public class WorkerAwaiter : INotifyCompletion

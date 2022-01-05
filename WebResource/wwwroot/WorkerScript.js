@@ -52,14 +52,15 @@ let createMessageReceiverMethodFullName;
 
 let bufferLength = 256;
 
-let decoderModule;
+// let decoderModule;
 
-let interopModule;
+// let interopModule;
 
 self.onmessage = (/** @type MessageEvent */ eventArg) => {
     self.onmessage = OnMessageReceived;
     ConfigureThis(eventArg);
-    ImportModules().then(() => InitializeRuntime());
+    ImportModules();
+    InitializeRuntime();
 }
 
 /**
@@ -97,13 +98,14 @@ function ConfigureThis(eventArg) {
 }
 
 /**
- * Import modules here(by dynamic import).
- * @returns {Promise<void>} 
+ * Import modules here
+ * @returns {void} 
  */
-async function ImportModules() {
-    interopModule = await import("./DotnetInterop.js");
+function ImportModules() {
+
+    globalThis.importScripts("./WorkerDotnetInterop.js");
     if (resourceDecoderPath != null) {
-        decoderModule = await import(BuildPath(resourceDecoderPath));
+        globalThis.importScripts(BuildPath(resourceDecoderPath));
     }
 }
 
@@ -280,7 +282,7 @@ function PostRun() {
     _mono_wasm_load_runtime(appBinDirName, 0);
     MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
-    postMessage({ t: "Init" });
+    postMessage({ t: "Init" }, null, null);
 }
 
 // #region typedef
@@ -427,7 +429,7 @@ async function FetchResource(fileName) {
         const arrayBuffer = await responce.arrayBuffer();
 
         if (resourceDecoderPath != null) {
-            return decoderModule[resourceDecodeMathodName](new Int8Array(arrayBuffer));
+            return globalThis[resourceDecodeMathodName](new Int8Array(arrayBuffer));
         } else {
             return new Uint8Array(arrayBuffer);
         }
@@ -507,7 +509,7 @@ let interop;
  * @returns {void}
  * */
 function InitializeMessagingService() {
-    interop = new interopModule.Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName);
+    interop = new Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName, jsExecutePath);
 }
 
 /**
@@ -552,4 +554,8 @@ function ReturnVoidResult(source) {
         console.error("not supported!");
     }
     interop.ReturnVoidResult((msg, trans) => globalThis.postMessage(msg, null, trans));
+}
+
+function AssignSyncCallSourceId() {
+    interop.AssignSyncCallSourceId();
 }

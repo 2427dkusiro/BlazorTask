@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace BlazorTask.Configure;
 
@@ -7,7 +8,9 @@ namespace BlazorTask.Configure;
 /// </summary>
 public sealed class BootJsonResourceResolver : IResourceResolver
 {
+#pragma warning disable CS8618
     private BootJsonResourceResolver() { }
+#pragma warning restore
 
     /// <summary>
     /// Create a new instance of <see cref="BootJsonResourceResolver"/>.
@@ -15,6 +18,7 @@ public sealed class BootJsonResourceResolver : IResourceResolver
     /// <param name="httpClient"></param>
     /// <param name="path"></param>
     /// <returns></returns>
+    [MemberNotNull]
     public static async Task<BootJsonResourceResolver> CreateInstanceAsync(HttpClient httpClient, string path)
     {
         var instance = new BootJsonResourceResolver();

@@ -5,6 +5,8 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<PackageId>Kujiro.$(AssemblyName)</PackageId>
+		<Version>$(VersionPrefix)</Version>
 	</PropertyGroup>
 
 	<ItemGroup>

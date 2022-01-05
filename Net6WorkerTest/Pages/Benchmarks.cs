@@ -58,7 +58,7 @@ public static class Benchmarks
         Tester.TestConditionAccesser? result = tester.CreateNewCondition($"N={n}");
 
         result[$"4 Threads"] = await RunMTTestInternal(tester, n, 4, workerService);
-        // result[$"8 Threads"] = await RunMTTestInternal(tester, n, 8, workerService);
+        result[$"8 Threads"] = await RunMTTestInternal(tester, n, 8, workerService);
     }
 
     private static MethodInfo? method3;
@@ -79,22 +79,18 @@ public static class Benchmarks
         }
 
         var start = 0;
-        var allTasks = new List<Task<double>>();
+        double ans = 0;
         foreach (Worker? worker in workers)
         {
             var end = start + sliceSize;
             BlazorTask.Tasks.WorkerTask<double>? task = worker.Call<double>(method3 ??= typeof(MathsService).GetMethod(nameof(MathsService.EstimatePISlice)), start, sliceSize);
-            allTasks.Add(task.AsTask());
+
+            var d = await task;
+            ans += 4 * d;
 
             start = end;
         }
-
-
-        var _result = await Task.WhenAll(allTasks.ToArray()).ContinueWith(t =>
-        {
-            return 4 * t.Result.Sum();
-        });
-        Console.WriteLine(_result);
+        Console.WriteLine(ans);
 
         sw.Stop();
 

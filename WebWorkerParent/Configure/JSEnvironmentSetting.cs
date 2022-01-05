@@ -36,6 +36,8 @@ public record JSEnvironmentSetting
 
     public string? MessageReceiverFullName { get; init; }
 
+    public string? BasePath { get; init; }
+
     /// <summary>
     /// Verify if this instance is valid or not. In case of invalid, message will set.
     /// </summary>
@@ -43,7 +45,7 @@ public record JSEnvironmentSetting
     /// <returns></returns>
     public bool IsValid([NotNullWhen(false)] out string? message)
     {
-        var mustNotEmpty = new string?[] { ParentScriptPath, WorkerScriptPath, MessageReceiverFullName };
+        var mustNotEmpty = new string?[] { ParentScriptPath, WorkerScriptPath, MessageReceiverFullName, BasePath };
         if (mustNotEmpty.Any(str => string.IsNullOrEmpty(str)))
         {
             message = $"Some required properties are null or empty.";

@@ -10,6 +10,13 @@ public static class WorkerContext
 {
     private static WorkerParent workerParent;
     public static WorkerParent Parent { get => workerParent ??= new WorkerParent(); }
+
+    private static JSRuntime.WorkerJSRuntime workerJSRuntime;
+    public static IJSUnmarshalledRuntime WorkerJSRuntime { get => workerJSRuntime ??= JSRuntime.WorkerJSRuntime.Singleton; }
+
+    private static HttpClient httpClient;
+
+    public static HttpClient HttpClient { get => httpClient ??= new HttpClient(); }
 }
 
 public class WorkerParent : ICallProvider
@@ -32,13 +39,13 @@ public class WorkerParent : ICallProvider
 
     private SerializedCallWorkerTask SerializedCall(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask(JSRuntime, header, methodName, arg, 0, MessageHandler);
     }
 
     private SerializedCallWorkerTask<T> SerializedCall<T>(string methodName, byte[] arg)
     {
-        var header = new CallHeader(CallHeader.CallType.Static);
+        var header = new CallHeader(CallHeader.CallType.Default);
         return new SerializedCallWorkerTask<T>(JSRuntime, header, methodName, arg, 0, MessageHandler);
     }
 }
