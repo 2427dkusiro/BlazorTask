@@ -917,9 +917,9 @@
       "url": "_content\/WebResource\/WorkerParent.js"
     },
     {
-      "hash": "sha256-07F7XYgpfaIubR5te8O5M45m0F7cdtrnssvfJiv7DP4=",
+      "hash": "sha256-DuRuZi9h3e1bQ7yVbBPm\/4bZ1UvhrlXI8pYFOI+Aa28=",
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "7nudKuWW"
+  "version": "zI4hFDHZ"
 };
