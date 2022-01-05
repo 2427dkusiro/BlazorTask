@@ -1,8 +1,10 @@
 ﻿import { BrotliDecode } from './decode.min.js';
+// import { Base64Decode } from "./Base64Decode.js";
+
 Blazor.start({
     loadBootResource: function (type, name, defaultUri, integrity) {
         // this means app is in debug mode.
-        if (location.hostname == "localhost" && location.port != "5050") {
+        if (location.hostname == "localhost" && location.port != "5500") {
             const span = document.getElementById("ProgressLoadMode");
             if (span.textContent == "") {
                 span.textContent = "Brotli圧縮無効";
@@ -11,7 +13,7 @@ Blazor.start({
             return;
         }
 
-        if (type !== 'dotnetjs' && location.hostname !== 'localhost') {
+        if (type !== 'dotnetjs') {
             return (async function () {
                 const response = await fetch(defaultUri + '.br', { cache: 'no-cache' });
                 if (!response.ok) {
@@ -20,6 +22,7 @@ Blazor.start({
                 const originalResponseBuffer = await response.arrayBuffer();
                 const originalResponseArray = new Int8Array(originalResponseBuffer);
                 const decompressedResponseArray = BrotliDecode(originalResponseArray);
+
                 const contentType = type ===
                     'dotnetwasm' ? 'application/wasm' : 'application/octet-stream';
                 return new Response(decompressedResponseArray,

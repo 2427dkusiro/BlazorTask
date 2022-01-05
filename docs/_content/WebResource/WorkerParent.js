@@ -1,11 +1,12 @@
 ﻿// @ts-check
 import { Interop } from "./DotnetInterop.js";
-import { DecodeUTF8AsJSON, DecodeUTF8String } from "./DotnetInterop.js";
+import { JSTextDecoder } from "./DotnetInterop.js";
 
 /**
  * @typedef EnvironmentSettings
  * @property {string} WorkerScriptPath
  * @property {string} MessageReceiverFullName
+ * @property {string} BasePath
  * */
 /*
  * @property {string} AssemblyName
@@ -21,6 +22,12 @@ const workers = [];
 
 /**
  * @private
+ * @type {JSTextDecoder}
+ * */
+let textDecoder;
+
+/**
+ * @private
  * @type {Interop}
  * */
 let interop;
@@ -33,8 +40,10 @@ let interop;
  * @returns {number}
  */
 export function Configure(jsonPtr, jsonLen, bufferLen) {
+    textDecoder = new JSTextDecoder();
+
     /** @type EnvironmentSettings */
-    const settings = DecodeUTF8AsJSON(jsonPtr, jsonLen);
+    const settings = textDecoder.DecodeUTF8AsJSON(jsonPtr, jsonLen);
     const _workerScriptUrl = settings.WorkerScriptPath;
     if (workerScriptUrl != undefined && workerScriptUrl != _workerScriptUrl) {
         throw new Error("Different worker script url was passed.");
@@ -44,7 +53,7 @@ export function Configure(jsonPtr, jsonLen, bufferLen) {
     if (interop != undefined) {
         console.error("Interop overwrite.");
     }
-    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null);
+    interop = new Interop(true, bufferLen, dotnetMessageRecieverFullName, null, settings.BasePath);
     return interop.generalBufferAddr;
 }
 
@@ -108,4 +117,16 @@ export function ReturnResult(source) {
  * */
 export function ReturnVoidResult(source) {
     interop.ReturnVoidResult((msg, trans) => workers[source].postMessage(msg, trans));
+}
+
+export function AssignSyncCallSourceId() {
+    interop.AssignSyncCallSourceId();
+}
+
+export function ReturnResultSync() {
+    interop.ReturnResult((msg, trans) => navigator.serviceWorker.controller.postMessage(msg, trans));
+}
+
+export function ReturnVoidResultSync() {
+    interop.ReturnVoidResult((msg, trans) => navigator.serviceWorker.controller.postMessage(msg, trans));
 }
