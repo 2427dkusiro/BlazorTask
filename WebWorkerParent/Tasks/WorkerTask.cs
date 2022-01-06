@@ -25,7 +25,7 @@ namespace BlazorTask.Tasks
 
         public void Wait()
         {
-            if(workerTaskMode != WorkerTaskMode.NotDecided)
+            if (workerTaskMode != WorkerTaskMode.NotDecided)
             {
                 throw new InvalidOperationException("This task is already started.");
             }

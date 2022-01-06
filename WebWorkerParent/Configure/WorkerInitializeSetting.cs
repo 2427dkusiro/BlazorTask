@@ -20,7 +20,6 @@ public record WorkerInitializeSetting
         get => defaultInstance ??= new WorkerInitializeSetting()
         {
             JSExecutePath = "../..",
-            BasePath = "/",
             FrameworkDirName = "_framework",
             AppBinDirName = "appBinDir",
             DotnetJsName = null,
