@@ -1,6 +1,6 @@
 ﻿// @ts-check
 
-const spPath = "_content/JSWrapper/Dummy.html";
+const spPath = "_content/WebResource/Dummy.txt";
 let id = 1;
 
 /**
@@ -55,8 +55,8 @@ async function GetMessage(id, timeout) {
  */
 function OnMessage(message) {
     /** @type ArrayBuffer */
-    const buffer = message.data.d;
-    const array = new Int32Array(buffer, 0, 8);
+    const buffer = message.data.d[0];
+    const array = new Int32Array(buffer, 0, 2);
     const id = array[1];
     responceTable.set(id, buffer);
 }
