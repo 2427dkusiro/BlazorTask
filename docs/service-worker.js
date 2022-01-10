@@ -69,4 +69,4 @@ function GetMIMEType(url) {
         return "font/woff";
     }
 }
-*//* Manifest version: I7/bCXpx */
+*//* Manifest version: Gii/HNtP */

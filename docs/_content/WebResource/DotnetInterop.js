@@ -208,7 +208,6 @@ export class Interop {
             bufferArray_r[1] = parseInt(responce);
         }
         bufferArray_r[0] = 8;
-        console.log(bufferArray_r);
     }
 
     async AssignSyncCallSourceIdAsync() {
