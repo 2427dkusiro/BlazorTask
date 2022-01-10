@@ -85,7 +85,7 @@ public abstract class MessageHandler
                 OnReceiveCall(id);
                 return;
             case "Res":
-                OnReceiveResult(id);
+                OnReceiveResult();
                 return;
         }
     }
@@ -145,7 +145,23 @@ public abstract class MessageHandler
     /// </summary>
     /// <param name="workerId">source of this message.</param>
     /// <exception cref="InvalidOperationException"></exception>
-    internal unsafe void OnReceiveResult(int workerId)
+    internal unsafe void OnReceiveResult()
+    {
+        switch (OnReceiveResultCommon(out Span<byte> resultType, out var callId))
+        {
+            case CallResultTypes.SuccessedVoid:
+                callResultTokens[callId].SetResultFromJson(resultType);
+                return;
+            case CallResultTypes.SuccessedJson:
+                callResultTokens[callId].SetResultFromJson(resultType);
+                return;
+            case CallResultTypes.Exception:
+                callResultTokens[callId].SetException(resultType);
+                return;
+        }
+    }
+
+    private unsafe CallResultTypes OnReceiveResultCommon(out Span<byte> span, out int callId)
     {
         var bufferPtr = (int*)buffer.ToPointer();
         var bufferpayload = bufferPtr[0];
@@ -158,33 +174,25 @@ public abstract class MessageHandler
 
         var dataPtr = (int*)dataAddr;
         var payload = dataPtr[0];
-        var callId = dataPtr[1];
+        callId = dataPtr[1];
         var resultType = (CallResultTypes)dataPtr[2];
 
         switch (resultType)
         {
             case CallResultTypes.SuccessedVoid:
-                callResultTokens[callId].SetResultFromJson(null);
-                return;
+                span = null;
+                break;
             case CallResultTypes.SuccessedJson:
-                callResultTokens[callId].SetResultFromJson(new Span<byte>(dataPtr + 3, payload - 12));
-                return;
             case CallResultTypes.Exception:
-                callResultTokens[callId].SetException(new Span<byte>(dataPtr + 3, payload - 12));
-                return;
+                span = new Span<byte>(dataPtr + 3, payload - 12);
+                break;
+            default:
+                throw new NotSupportedException();
         }
+        return resultType;
     }
 
-    /// <summary>
-    /// Call method from json serialized arguments.
-    /// </summary>
-    /// <param name="callHeader"></param>
-    /// <param name="methodName"></param>
-    /// <param name="args"></param>
-    /// <param name="workerId"></param>
-    /// <param name="workerAwaiter"></param>
-    /// <exception cref="InvalidOperationException"></exception>
-    public unsafe void CallSerializedSync(CallHeader callHeader, string methodName, byte[] args, int workerId)
+    private unsafe void CallCommom(CallHeader callHeader, string methodName, byte[] args, int workerId)
     {
         if (bufferLength < 28)
         {
@@ -207,6 +215,36 @@ public abstract class MessageHandler
                 InvokeJSVoid("SCall", workerId);
             }
         }
+    }
+
+    /// <summary>
+    /// Call method from json serialized arguments.
+    /// </summary>
+    /// <param name="callHeader"></param>
+    /// <param name="methodName"></param>
+    /// <param name="args"></param>
+    /// <param name="workerId"></param>
+    /// <param name="workerAwaiter"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public void CallSerializedSync(CallHeader callHeader, string methodName, byte[] args, int workerId)
+    {
+        CallCommom(callHeader, methodName, args, workerId);
+        GetSyncCallResult(callHeader.callId);
+    }
+
+    /// <summary>
+    /// Call method from json serialized arguments.
+    /// </summary>
+    /// <param name="callHeader"></param>
+    /// <param name="methodName"></param>
+    /// <param name="args"></param>
+    /// <param name="workerId"></param>
+    /// <param name="workerAwaiter"></param>
+    /// <exception cref="InvalidOperationException"></exception>
+    public T CallSerializedSync<T>(CallHeader callHeader, string methodName, byte[] args, int workerId)
+    {
+        CallCommom(callHeader, methodName, args, workerId);
+        return GetSyncCallResult<T>(callHeader.callId);
     }
 
     /// <summary>
@@ -220,54 +258,14 @@ public abstract class MessageHandler
     /// <exception cref="InvalidOperationException"></exception>
     public unsafe void CallSerialized(CallHeader callHeader, string methodName, byte[] args, int workerId, WorkerAwaiter workerAwaiter)
     {
-        if (bufferLength < 28)
-        {
-            throw new InvalidOperationException("Buffer too short");
-        }
-        fixed (char* methodNamePtr = methodName)
-        {
-            fixed (byte* argPtr = args)
-            {
-                var ptr = (int*)buffer.ToPointer();
-                ptr[0] = 0;
-                ptr[1] = (int)&callHeader;
-                ptr[2] = callHeader.payloadLength;
-                ptr[3] = (int)methodNamePtr;
-                ptr[4] = methodName.Length * sizeof(char);
-                ptr[5] = (int)argPtr;
-                ptr[6] = args.Length;
-                ptr[0] = 28;
-
-                InvokeJSVoid("SCall", workerId);
-            }
-        }
+        CallCommom(callHeader, methodName, args, workerId);
         var token = new CallResultToken(workerAwaiter);
         RegisterCallResultToken(callHeader.callId, token);
     }
 
-    public unsafe void CallSerialized<T>(CallHeader callHeader, string methodName, byte[] args, int workerId, WorkerAwaiter<T> workerAwaiter)
+    public unsafe void CallSerialized<T>(CallHeader callHeader, string methodName, byte[] args, int workerId, WorkerAwaiter<T?> workerAwaiter)
     {
-        if (bufferLength < 28)
-        {
-            throw new InvalidOperationException("Buffer too short");
-        }
-        fixed (char* methodNamePtr = methodName)
-        {
-            fixed (byte* argPtr = args)
-            {
-                var ptr = (int*)buffer.ToPointer();
-                ptr[0] = 0;
-                ptr[1] = (int)&callHeader;
-                ptr[2] = callHeader.payloadLength;
-                ptr[3] = (int)methodNamePtr;
-                ptr[4] = methodName.Length * sizeof(char);
-                ptr[5] = (int)argPtr;
-                ptr[6] = args.Length;
-                ptr[0] = 28;
-
-                InvokeJSVoid("SCall", workerId);
-            }
-        }
+        CallCommom(callHeader, methodName, args, workerId);
         var token = new CallResultToken<T>(workerAwaiter);
         RegisterCallResultToken(callHeader.callId, token);
     }
@@ -373,5 +371,36 @@ public abstract class MessageHandler
         }
 
         return ptr[1];
+    }
+
+    public void GetSyncCallResult(int id)
+    {
+        InvokeJSVoid("WaitSyncCall", id);
+        CallResultTypes type = OnReceiveResultCommon(out Span<byte> span, out var callId);
+        DebugHelper.Debugger.Assert(id == callId);
+        switch (type)
+        {
+            case CallResultTypes.SuccessedVoid:
+            case CallResultTypes.SuccessedJson:
+                return;
+            case CallResultTypes.Exception:
+                throw JsonSerializer.Deserialize<WorkerException>(span)!;
+            default:
+                throw new NotSupportedException();
+        }
+    }
+
+    public T GetSyncCallResult<T>(int id)
+    {
+        InvokeJSVoid("WaitSyncCall", id);
+        CallResultTypes type = OnReceiveResultCommon(out Span<byte> span, out var callId);
+        DebugHelper.Debugger.Assert(id == callId);
+        return type switch
+        {
+            CallResultTypes.SuccessedVoid => throw new InvalidOperationException("Worker returned void result."),
+            CallResultTypes.SuccessedJson => JsonSerializer.Deserialize<T>(span)!,
+            CallResultTypes.Exception => throw JsonSerializer.Deserialize<WorkerException>(span)!,
+            _ => throw new NotSupportedException(),
+        };
     }
 }

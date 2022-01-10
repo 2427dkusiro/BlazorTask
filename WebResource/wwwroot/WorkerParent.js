@@ -1,6 +1,6 @@
 ﻿// @ts-check
 import { Interop } from "./DotnetInterop.js";
-import { DecodeUTF8AsJSON, DecodeUTF8String } from "./DotnetInterop.js";
+import { JSTextDecoder } from "./DotnetInterop.js";
 
 /**
  * @typedef EnvironmentSettings
@@ -22,6 +22,12 @@ const workers = [];
 
 /**
  * @private
+ * @type {JSTextDecoder}
+ * */
+let textDecoder;
+
+/**
+ * @private
  * @type {Interop}
  * */
 let interop;
@@ -34,8 +40,10 @@ let interop;
  * @returns {number}
  */
 export function Configure(jsonPtr, jsonLen, bufferLen) {
+    textDecoder = new JSTextDecoder();
+
     /** @type EnvironmentSettings */
-    const settings = DecodeUTF8AsJSON(jsonPtr, jsonLen);
+    const settings = textDecoder.DecodeUTF8AsJSON(jsonPtr, jsonLen);
     const _workerScriptUrl = settings.WorkerScriptPath;
     if (workerScriptUrl != undefined && workerScriptUrl != _workerScriptUrl) {
         throw new Error("Different worker script url was passed.");

@@ -429,7 +429,9 @@ async function FetchResource(fileName) {
         const arrayBuffer = await responce.arrayBuffer();
 
         if (resourceDecoderPath != null) {
-            return globalThis[resourceDecodeMathodName](new Int8Array(arrayBuffer));
+            /** @type function */
+            const func = globalThis[resourceDecodeMathodName]();
+            return func.call(null, new Int8Array(arrayBuffer));
         } else {
             return new Uint8Array(arrayBuffer);
         }
@@ -460,7 +462,7 @@ async function InitializeCache() {
         if (resourceCache == null) {
             const keys = await caches.keys();
             for (let i = 0; i < keys.length; i++) {
-                if (keys[i].startsWith(targetCacheKey)) {
+                if (keys[i].includes(cachePrefix) && keys[i].includes(basePath)) {
                     resourceCache = await caches.open(keys[i]);
                     break;
                 }
@@ -509,7 +511,7 @@ let interop;
  * @returns {void}
  * */
 function InitializeMessagingService() {
-    interop = new Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName, jsExecutePath);
+    interop = new Interop(false, bufferLength, messageHandlerMethodFullName, createMessageReceiverMethodFullName, basePath);
 }
 
 /**
@@ -558,4 +560,8 @@ function ReturnVoidResult(source) {
 
 function AssignSyncCallSourceId() {
     interop.AssignSyncCallSourceId();
+}
+
+function WaitSyncCall(id) {
+    interop.GetCallSyncResult(id);
 }

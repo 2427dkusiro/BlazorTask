@@ -32,13 +32,9 @@ public sealed class SerializedCallWorkerTask : WorkerTask
     protected override void BlockingInvoke()
     {
         var callId = callHeader.callId;
-        var option = callHeader.callType;
+        CallHeader.CallType option = callHeader.callType;
 
         var sourceId = messageHandler.GetSyncCallSourceId();
-        Console.WriteLine($"source ID:{sourceId}");
-
-#warning デバッグ用
-        // sourceId = 1;
 
         if (sourceId == -1)
         {
@@ -89,12 +85,9 @@ public sealed class SerializedCallWorkerTask<T> : WorkerTask<T>
     protected override T BlockingInvoke()
     {
         var callId = callHeader.callId;
-        var option = callHeader.callType;
+        CallHeader.CallType option = callHeader.callType;
 
         var sourceId = messageHandler.GetSyncCallSourceId();
-
-#warning デバッグ用
-        // sourceId = 1;
 
         if (sourceId == -1)
         {
@@ -111,8 +104,6 @@ public sealed class SerializedCallWorkerTask<T> : WorkerTask<T>
         callId = (sourceId << 24) | callId;
         option |= CallHeader.CallType.Sync;
         var newHeader = new CallHeader(callId, option);
-        messageHandler.CallSerializedSync(newHeader, methodName, args, workerId);
-
-        throw new NotImplementedException();
+        return messageHandler.CallSerializedSync<T>(newHeader, methodName, args, workerId);
     }
 }

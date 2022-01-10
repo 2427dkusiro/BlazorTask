@@ -13,7 +13,10 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services.AddWorkerService(config => config
                     .ResolveResourcesFromBootJson(config.HttpClient)
-                    .FetchBrotliResources("workerDecode.min.js"));
+#if !DEBUG
+                    .FetchBrotliResources("workerDecode.min.js")
+#endif
+                    );
 
 WebAssemblyHost? host = builder.Build();
 await Task.WhenAll(host.InitializeWorkerService(), host.RunAsync());

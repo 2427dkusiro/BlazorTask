@@ -1,6 +1,13 @@
-﻿const spPath = "_content/JSWrapper/Dummy.html";
+﻿// @ts-check
+
+const spPath = "_content/JSWrapper/Dummy.txt";
 let id = 1;
 
+/**
+ * Return true if passed request is special.
+ * @param {Request} request
+ * @returns {boolean}
+ */
 function IsSpecial(request) {
     let url = new URL(request.url);
     if (url.pathname.endsWith(spPath)) {
@@ -13,43 +20,51 @@ function IsSpecial(request) {
 async function GetSpecialResponse(request) {
     let url = new URL(request.url);
     const action = url.searchParams.get("action");
-    if (action == "GetInput") {
-        const guid = url.searchParams.get("id");
-        const value = await GetMessage(guid, 30000);
-        const response = new Response(value);
-        response.status = 200;
+    if (action == "GetResult") {
+        const id = url.searchParams.get("id");
+        const value = await GetMessage(id, 30000);
+        const response = new Response(value, { status: 200 });
         return response;
     }
     if (action == "GetId") {
-        const response = new Response((id++).toString());
-        response.status = 200;
+        const response = new Response((id++).toString(), { status: 200 });
         return response;
     }
 }
 
-const inputTable = new Map();
+/** @type Map<number,ArrayBuffer> */
+const responceTable = new Map();
 const waitUnit = 200;
 
-async function GetMessage(guid, timeout) {
+async function GetMessage(id, timeout) {
     const count = timeout == -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
-    for (i = 0; i < count; i++) {
-        if (inputTable.has(guid)) {
-            const value = inputTable.get(guid);
-            inputTable.delete(guid);
+    for (let i = 0; i < count; i++) {
+        if (responceTable.has(id)) {
+            const value = responceTable.get(id);
+            responceTable.delete(id);
             return value;
         }
-        await delay(waitUnit);
+        await Delay(waitUnit);
     }
     return null;
 }
 
+/**
+ * Handle special message.
+ * @param {MessageEvent} message message
+ */
 function OnMessage(message) {
-    const obj = JSON.parse(message);
-    if (obj.type == "Input") {
-        inputTable.set(obj.guid, obj.message);
-    }
+    /** @type ArrayBuffer */
+    const buffer = message.data.d;
+    const array = new Int32Array(buffer, 0, 8);
+    const id = array[1];
+    responceTable.set(id, buffer);
 }
 
-function delay(ms) {
+/**
+ * Return a promise which will be resolved in specified millseconds. (like Task.Delay)
+ * @param {number} ms time to wait.
+ */
+function Delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
