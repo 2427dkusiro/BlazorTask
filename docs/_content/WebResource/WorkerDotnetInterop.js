@@ -229,12 +229,18 @@ class Interop {
         bufferArray_r[0] = 8;
     }
 
-    GetCallSyncResult() {
+    /**
+     * Wait sync call and set result to buffer.
+     * @param {number} id
+     */
+    GetCallSyncResult(id) {
         const requestUrl = "_content/WebResource/Dummy.txt";
         const xhr = new XMLHttpRequest();
         const url = new URL(requestUrl, this.baseUrl);
         url.searchParams.set("action", "GetResult");
+        url.searchParams.set("id", id.toString());
         xhr.open("GET", url.toString(), false);
+        xhr.send(null);
 
         /** @type ArrayBuffer */
         const responce = xhr.response;

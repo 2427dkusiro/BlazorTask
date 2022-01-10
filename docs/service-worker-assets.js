@@ -781,23 +781,23 @@
       "url": "_framework\/icudt_no_CJK.dat"
     },
     {
-      "hash": "sha256-N0xl8bJXWrseLS2i8WcBgMdAtsriXCFxjRCT3y2EGZ8=",
+      "hash": "sha256-XbTT8YE3gw0k11RX2WFTziVkmpdmqHOzsE6wtZYQ3OE=",
       "url": "_framework\/blazor.boot.json"
     },
     {
-      "hash": "sha256-T0YJKE6jGbgk9IUeO+1YWBMzsbP5WhBHDJkOumnyC9Q=",
+      "hash": "sha256-632uBssZRODaLQ1nkJ5ukZ4p1HDHp\/AYGJ7T39PmU84=",
       "url": "_framework\/BlazorTaskDemo.dll"
     },
     {
-      "hash": "sha256-4QTXWnxLSFDJzaUFpfoYQfwr8WjYacA4n9dSFAbgDz4=",
+      "hash": "sha256-e0ms7hOV3k2Xx8Hy9uuAQnN+pUIg6GISvvgGpg\/OtnM=",
       "url": "_framework\/dotnet.6.0.1.0g8aacqq3a.js"
     },
     {
-      "hash": "sha256-I0dKW0NMXclUrZEguEjlIqZpcNoUJ2KS5\/\/brF3l8oY=",
+      "hash": "sha256-2NuLpgTRFeCJVj21vVkWS5CtzM7L8MoNHsuMGHoapdc=",
       "url": "_framework\/dotnet.wasm"
     },
     {
-      "hash": "sha256-DJfbfepktiA2zvGLoQFd5Bj\/ax5zX5cYZZ4N3gNpdCE=",
+      "hash": "sha256-KrNANRedIBfk719UXoQs6nLVLbnnZD1KZgwfuDYJufk=",
       "url": "_framework\/SampleWorkerAssembly.dll"
     },
     {
@@ -805,7 +805,7 @@
       "url": "_framework\/WebResource.dll"
     },
     {
-      "hash": "sha256-6Nw5u+vWaME3UDs62HQQPFdFYnXZYA1EgKv3KlRWFCo=",
+      "hash": "sha256-GRAdJ1hjBE5FnQP0G2lHacItah5TbuAtN8Zy2mqe\/Fc=",
       "url": "_framework\/BlazorTask.dll"
     },
     {
@@ -893,7 +893,7 @@
       "url": "workerDecode.min.js"
     },
     {
-      "hash": "sha256-c7wE58fqneHdUfB6ZBlr10X09H2yJ0B\/U8evi5d7rSo=",
+      "hash": "sha256-BNoByQq3OhfpidS214SJkNp5Ki+W8WWl0Xz1KHiPbLM=",
       "url": "_content\/WebResource\/DotnetInterop.js"
     },
     {
@@ -909,7 +909,7 @@
       "url": "_content\/WebResource\/TextDecoder.js"
     },
     {
-      "hash": "sha256-2EFQi2NrhgcLrAdp4b2pKDwj4fhdAMHGcQpiKIzgPeI=",
+      "hash": "sha256-LZp4tcA8QCA8qjb\/BDToCG4u8dv8002yoWKFfRIXL2M=",
       "url": "_content\/WebResource\/WorkerDotnetInterop.js"
     },
     {
@@ -921,5 +921,5 @@
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "unaSvFzz"
+  "version": "iYYwxcBY"
 };

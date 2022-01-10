@@ -240,6 +240,7 @@ export class Interop {
         url.searchParams.set("action", "GetResult");
         url.searchParams.set("id", id.toString());
         xhr.open("GET", url.toString(), false);
+        xhr.send(null);
 
         /** @type ArrayBuffer */
         const responce = xhr.response;
