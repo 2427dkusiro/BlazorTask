@@ -3,7 +3,7 @@ self.importScripts("./service-worker-assets.js");
 self.addEventListener("install", event => event.waitUntil(OnInstall(event)));
 self.addEventListener("activate", event => event.waitUntil(OnActivate(event)));
 self.addEventListener("fetch", event => event.respondWith(OnFetch(event)));
-self.addEventListener("message", event => OnMessage(event.data));
+self.addEventListener("message", event => OnMessage(event));
 
 const cacheNamePrefix = "offline-cache-";
 const cacheName = "${cacheNamePrefix}${self.assetsManifest.version}";
@@ -44,29 +44,3 @@ async function OnFetch(event) {
     }
     return await fetch(event.request);
 }
-
-/*
-function GetMIMEType(url) {
-    if (url.endsWith(".dll") || url.endsWith(".pdb")) {
-        return "application/octet-stream";
-    }
-    if (url.endsWith(".wasm")) {
-        return "application/wasm";
-    }
-    if (url.endsWith(".html")) {
-        return "text/html";
-    }
-    if (url.endsWith(".js")) {
-        return "text/javascript";
-    }
-    if (url.endsWith(".json")) {
-        return "application/json";
-    }
-    if (url.endsWith(".css")) {
-        return "text/css";
-    }
-    if (url.endsWith(".woff")) {
-        return "font/woff";
-    }
-}
-*/
