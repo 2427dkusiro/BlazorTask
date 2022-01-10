@@ -1,6 +1,6 @@
 ﻿// @ts-check
 
-const spPath = "_content/JSWrapper/Dummy.txt";
+const spPath = "_content/WebResource/Dummy.txt";
 let id = 1;
 
 /**
