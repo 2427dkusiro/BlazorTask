@@ -1,5 +1,4 @@
 ﻿import { BrotliDecode } from './decode.min.js';
-// import { Base64Decode } from "./Base64Decode.js";
 
 Blazor.start({
     loadBootResource: function (type, name, defaultUri, integrity) {
@@ -23,7 +22,8 @@ Blazor.start({
                 const originalResponseArray = new Int8Array(originalResponseBuffer);
                 const decompressedResponseArray = BrotliDecode(originalResponseArray);
 
-                // integrity
+                // integrity check code
+                /*
                 if (integrity != "") {
                     const digest = await crypto.subtle.digest("sha-256", decompressedResponseArray);
                     const bytes = new Uint8Array(digest);
@@ -37,9 +37,10 @@ Blazor.start({
                     const computedHash = "sha256-" + digestString;
                     if (integrity !== computedHash) {
                         console.error("Failed to find a valid digest for resource '" + name + "' with computed SHA-256 integrity '" + computedHash + "'. The resource has been blocked.");
-                        // return null;
+                        return null;
                     }
                 }
+                */
 
                 const contentType = type ===
                     'dotnetwasm' ? 'application/wasm' : 'application/octet-stream';

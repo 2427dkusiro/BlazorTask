@@ -33,6 +33,9 @@ let dotnetAssemblies;
 /** @type boolean */
 let useCache;
 
+/** @type string */
+let cacheName;
+
 // When undefined, use browser provided locale string.
 /** @type string */
 let dotnetCulture;
@@ -83,6 +86,7 @@ function ConfigureThis(eventArg) {
     resourceDecodeMathodName = setting.ResourceDecodeMathodName;
     resourceSuffix = setting.ResourceSuffix
     useCache = setting.UseResourceCache;
+    cacheName = setting.CacheName;
     dotnetCulture = setting.DotnetCulture;
     timeZoneFileName = setting.TimeZoneFileName;
     messageHandlerMethodFullName = setting.MessageHandlerMethodFullName;
@@ -300,6 +304,7 @@ function PostRun() {
  * @property {string} ResourceDecodeMathodName
  * @property {string} ResourceSuffix
  * @property {boolean} UseResourceCache
+ * @property {string} CacheName
  * @property {string} DotnetCulture
  * @property {string} TimeZoneString
  * @property {string} TimeZoneFileName
@@ -399,8 +404,6 @@ let resourceCache;
 /** @type readonly Request[] */
 let resourceCacheKeys;
 
-const cachePrefix = "blazor-resources-";
-
 /**
  * Fetch resource by configured way.
  * @param {string} fileName
@@ -456,13 +459,12 @@ let cacheInitializeTryed = false;
  * */
 async function InitializeCache() {
     cacheInitializeTryed = true;
-    const targetCacheKey = cachePrefix + basePath;
 
     if (useCache) {
         if (resourceCache == null) {
             const keys = await caches.keys();
             for (let i = 0; i < keys.length; i++) {
-                if (keys[i].includes(cachePrefix) && keys[i].includes(basePath)) {
+                if (keys[i] === cacheName) {
                     resourceCache = await caches.open(keys[i]);
                     break;
                 }
@@ -474,15 +476,12 @@ async function InitializeCache() {
         if (resourceCacheKeys == null) {
             resourceCacheKeys = await resourceCache.keys();
             if (resourceCacheKeys == null || resourceCacheKeys.length == 0) {
-                cacheAvailable = false;
                 return;
             } else {
                 cacheAvailable = true;
                 return;
             }
         }
-    } else {
-        cacheAvailable = false;
     }
 }
 
