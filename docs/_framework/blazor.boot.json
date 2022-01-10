@@ -8,7 +8,7 @@
   "resources": {
     "assembly": {
       "BlazorTask.dll": "sha256-7R+hnYMYdohBUMy05f1LHI6Tu\/ylwRWoxHNJVzgprbw=",
-      "BlazorTaskDemo.dll": "sha256-fyPybYgcs3i6DcvGk8jAjUkvHMOQj7qCtyX2NNOvoMk=",
+      "BlazorTaskDemo.dll": "sha256-eb20oEVRmg8IOOOLplii8f59Z1BGzRfZd0wdhMyKVFc=",
       "Microsoft.AspNetCore.Authorization.dll": "sha256-hGbT4jDhpi63093bjGt+4XVJ3Z9t1FVbmgNmYYmpiNY=",
       "Microsoft.AspNetCore.Components.dll": "sha256-NJ2GmZOAzlolS7ZPvt5guh86ICBupqwCNK0ygg7fkhE=",
       "Microsoft.AspNetCore.Components.Forms.dll": "sha256-YEcUfJbV\/+SrxppUEKn5jqOg8WptBrdAGaDG+psN8Yg=",
@@ -38,7 +38,7 @@
       "Microsoft.Win32.Registry.dll": "sha256-ZsCP0jdQunIOgPJXkpX7yoNmh9xIrDdsJ2qO9B5JmO8=",
       "mscorlib.dll": "sha256-D\/B7fx+JRbK7Nl8yWAODxeHUHlLbvsWdDAEes5MDIyw=",
       "netstandard.dll": "sha256-1nMAQ0QEpq5opAgJ9ulKwzJ99J7j6FOhdPcTaCZTzzw=",
-      "SampleWorkerAssembly.dll": "sha256-t11eXqzeSJRYuLYGe91OBFZE5b40xbHAMFqOwqgJRJo=",
+      "SampleWorkerAssembly.dll": "sha256-3Z4rdVqLlVBPbFW8hfYWce+Z9txH6uDlrD3PrVoct48=",
       "System.AppContext.dll": "sha256-WB0AYH9b0UnhcZiGERoBYkBrlPI\/KHjA17eEZ3Gbi1U=",
       "System.Buffers.dll": "sha256-kF4sPdwEd1rCN3HX4IKWXc\/B7lB9QujzpUdNfxgoJU0=",
       "System.Collections.Concurrent.dll": "sha256-80cXhg8JS042HjfCObkcZl2IWPGejPqPNq\/Rnazp77g=",
@@ -206,9 +206,9 @@
     "libraryInitializers": null,
     "pdb": null,
     "runtime": {
-      "dotnet.6.0.1.0g8aacqq3a.js": "sha256-7scr7bFOvABeHfwETUUf5fgTNqUML31q+6jWpBM64s4=",
+      "dotnet.6.0.1.0g8aacqq3a.js": "sha256-673SK9ot5P3XdJIj8tehED99iUc6\/r4GpkXVFVY\/AE4=",
       "dotnet.timezones.blat": "sha256-2kYo2V\/aZ7htYEvY5PVJlrMYhFf1jH8\/VS+SP7B7QUg=",
-      "dotnet.wasm": "sha256-PFFzr5HjrjVDV97mG3iczSt7HMhJsgKuuvgNJPwTlsU=",
+      "dotnet.wasm": "sha256-vS34DDe0wV+VGZcQOHQUjBS91tf+G1vgAOQE\/sMMnZw=",
       "icudt.dat": "sha256-Zuq0dWAsBm6\/2lSOsz7+H9PvFaRn61KIXHMMwXDfvyE=",
       "icudt_CJK.dat": "sha256-WPyI4hWDPnOw62Nr27FkzGjdbucZnQD+Ph+GOPhAedw=",
       "icudt_EFIGS.dat": "sha256-4RwaPx87Z4dvn77ie\/ro3\/QzyS+\/gGmO3Y\/0CSAXw4k=",
