@@ -901,7 +901,7 @@
       "url": "_content\/WebResource\/Dummy.txt"
     },
     {
-      "hash": "sha256-gfraOn60mkBWBzwIQHMl8UpId\/ehcS072k8m1\/QO0jE=",
+      "hash": "sha256-q3J9oA3eSWaDge8SWf8lQAnGeChWxznSqAC4uGxk4YQ=",
       "url": "_content\/WebResource\/SyncWorkerService.js"
     },
     {
@@ -921,5 +921,5 @@
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "kHvzuKJm"
+  "version": "Ro3p2Eam"
 };
