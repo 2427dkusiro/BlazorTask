@@ -4,7 +4,7 @@ namespace Net6WorkerTest.Pages
 {
     public partial class Benchmark
     {
-        private List<TestUI> TestUIs = new();
+        private readonly List<TestUI> TestUIs = new();
 
         private static string Display(TimeSpan ts)
         {

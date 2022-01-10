@@ -13,7 +13,7 @@ Blazor.start({
             return;
         }
 
-        if (type !== 'dotnetjs') {
+        if (type !== 'dotnetjs' && location.hostname !== 'localhost') {
             return (async function () {
                 const response = await fetch(defaultUri + '.br', { cache: 'no-cache' });
                 if (!response.ok) {
@@ -22,6 +22,26 @@ Blazor.start({
                 const originalResponseBuffer = await response.arrayBuffer();
                 const originalResponseArray = new Int8Array(originalResponseBuffer);
                 const decompressedResponseArray = BrotliDecode(originalResponseArray);
+
+                // integrity check code
+                /*
+                if (integrity != "") {
+                    const digest = await crypto.subtle.digest("sha-256", decompressedResponseArray);
+                    const bytes = new Uint8Array(digest);
+                    var binary = "";
+                    var len = bytes.byteLength;
+                    for (var i = 0; i < len; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const digestString = window.btoa(binary).replace("/", "\/");
+
+                    const computedHash = "sha256-" + digestString;
+                    if (integrity !== computedHash) {
+                        console.error("Failed to find a valid digest for resource '" + name + "' with computed SHA-256 integrity '" + computedHash + "'. The resource has been blocked.");
+                        return null;
+                    }
+                }
+                */
 
                 const contentType = type ===
                     'dotnetwasm' ? 'application/wasm' : 'application/octet-stream';

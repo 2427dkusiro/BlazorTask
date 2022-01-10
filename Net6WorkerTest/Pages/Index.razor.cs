@@ -111,7 +111,7 @@ namespace Net6WorkerTest.Pages
             }
             System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.SyncReverseCall))!;
 
-            Hoge.WorkerCallback = (string str) =>
+            Hoge.WorkerSyncCallback = (string str) =>
             {
                 syncReverseCallString += $"worker writen:{str}{Environment.NewLine}";
                 StateHasChanged();
@@ -121,8 +121,6 @@ namespace Net6WorkerTest.Pages
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var res = await worker.Call<int>(method, a, b);
                 syncReverseCallString += $"worker returns:{res.ToString()}{Environment.NewLine}";
-
-                await worker.Call(method, a, b);
                 stopwatch.Stop();
                 syncMethodCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
             }

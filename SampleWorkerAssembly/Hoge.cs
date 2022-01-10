@@ -17,19 +17,26 @@
             WorkerCallback?.Invoke(ans.ToString());
         }
 
+        public static void WriteAnswerSync(int ans)
+        {
+            WorkerSyncCallback?.Invoke(ans.ToString());
+        }
+
         public static Action<string>? WorkerCallback { get; set; }
+
+        public static Action<string>? WorkerSyncCallback { get; set; }
 
         public static async Task<int> ReverseCall(int a, int b)
         {
             var answer = a + b;
-            await BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswer)), answer);
+            await BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswer))!, answer);
             return answer;
         }
 
         public static int SyncReverseCall(int a, int b)
         {
             var answer = a + b;
-            BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswer)), answer).Wait();
+            BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswerSync))!, answer).Wait();
             return answer;
         }
 

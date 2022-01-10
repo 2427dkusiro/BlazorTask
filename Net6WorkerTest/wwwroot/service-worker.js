@@ -3,7 +3,7 @@ self.importScripts("./service-worker-assets.js");
 self.addEventListener("install", event => event.waitUntil(OnInstall(event)));
 self.addEventListener("activate", event => event.waitUntil(OnActivate(event)));
 self.addEventListener("fetch", event => event.respondWith(OnFetch(event)));
-self.addEventListener("message", event => OnMessage(event.data));
+self.addEventListener("message", event => OnMessage(event));
 
 
 async function OnInstall(event) {
