@@ -1,7 +1,7 @@
 ﻿// @ts-check
 
 const spPath = "_content/WebResource/Dummy.txt";
-let id = 1;
+let callerId = 1;
 
 /**
  * Return true if passed request is special.
@@ -22,12 +22,13 @@ async function GetSpecialResponse(request) {
     const action = url.searchParams.get("action");
     if (action == "GetResult") {
         const id = url.searchParams.get("id");
-        const value = await GetMessage(id, 30000);
+        const value = await GetMessage(parseInt(id), 30000);
         const response = new Response(value, { status: 200 });
         return response;
     }
     if (action == "GetId") {
-        const response = new Response((id++).toString(), { status: 200 });
+        const newId = callerId == 255 ? 1 : callerId++;
+        const response = new Response((newId).toString(), { status: 200 });
         return response;
     }
 }
@@ -36,6 +37,10 @@ async function GetSpecialResponse(request) {
 const responceTable = new Map();
 const waitUnit = 200;
 
+/**
+ * @param {number} id
+ * @param {number} timeout
+ */
 async function GetMessage(id, timeout) {
     const count = timeout == -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
     for (let i = 0; i < count; i++) {
