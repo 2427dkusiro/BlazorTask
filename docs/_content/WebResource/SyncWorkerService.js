@@ -55,7 +55,7 @@ async function GetMessage(id, timeout) {
  */
 function OnMessage(message) {
     /** @type ArrayBuffer */
-    const buffer = message.data.d;
+    const buffer = message.data.d[0];
     const array = new Int32Array(buffer, 0, 8);
     const id = array[1];
     responceTable.set(id, buffer);
