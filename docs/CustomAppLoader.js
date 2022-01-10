@@ -37,7 +37,7 @@ Blazor.start({
                     const computedHash = "sha256-" + digestString;
                     if (integrity !== computedHash) {
                         console.error("Failed to find a valid digest for resource '" + name + "' with computed SHA-256 integrity '" + computedHash + "'. The resource has been blocked.");
-                        return null;
+                        // return null;
                     }
                 }
 
