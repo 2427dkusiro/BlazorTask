@@ -1,3 +1,5 @@
+//@ts-check
+
 self.importScripts("./_content/WebResource/SyncWorkerService.js", "./_content/WebResource/ResourceLoader.js", "workerDecode.min.js");
 
 self.importScripts("./service-worker-assets.js");
@@ -38,18 +40,18 @@ async function OnActivate(event) {
         .map(key => caches.delete(key)));
 }
 
-const cacheName = "blazor-resources-/BlazorTask/";
+const blazorCacheName = "blazor-resources-/BlazorTask/";
 const resourceSuffix = ".br";
 const resourceDecoderMethodName = "BrotliDecode";
 let loader;
 
 async function OnFetch(event) {
     if (loader === undefined) {
-        loader = new Loader(true, cacheName, true, resourceSuffix, resourceDecoderMethodName);
+        loader = new Loader(true, blazorCacheName, true, resourceSuffix, resourceDecoderMethodName);
     }
     if (IsSpecial(event.request)) {
         let response = await GetSpecialResponse(event.request);
         return response;
     }
     return await loader.FetchResourceResponce(event.request);
-}/* Manifest version: g71AKVAq */
+}
