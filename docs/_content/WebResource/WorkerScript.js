@@ -55,9 +55,8 @@ let createMessageReceiverMethodFullName;
 
 let bufferLength = 256;
 
-// let decoderModule;
-
-// let interopModule;
+/** @type Loader */
+let resourceLoader;
 
 self.onmessage = (/** @type MessageEvent */ eventArg) => {
     self.onmessage = OnMessageReceived;
@@ -106,11 +105,11 @@ function ConfigureThis(eventArg) {
  * @returns {void} 
  */
 function ImportModules() {
-
-    globalThis.importScripts("./WorkerDotnetInterop.js");
+    globalThis.importScripts("./WorkerDotnetInterop.js", "./ResourceLoader.js");
     if (resourceDecoderPath != null) {
         globalThis.importScripts(BuildPath(resourceDecoderPath));
     }
+    resourceLoader = new Loader(useCache, cacheName, resourceDecoderPath != null, resourceSuffix, resourceDecodeMathodName);
 }
 
 /**
@@ -180,18 +179,9 @@ function InstantiateWasm(imports, successCallback) {
         /** @type WebAssembly.Instance */
         let compiledInstance;
         try {
-            if (!cacheInitializeTryed) {
-                await InitializeCache();
-            }
-            // if cache available or decode required, cannot(or not necessary to) do streaming compile.
-            if (cacheAvailable || resourceDecoderPath != null) {
-                const responce = await FetchResource(dotnetWasmName);
-                compiledInstance = await CompileWasmModuleArrayBuffer(responce.buffer, imports);
-            }
-            else {
-                const dotnetWasmResource = fetch(BuildFrameworkPath(dotnetWasmName));
-                compiledInstance = await CompileWasmModule(dotnetWasmResource, imports);
-            }
+            const path = BuildFrameworkPath(dotnetWasmName);
+            const promise = resourceLoader.FetchResourceResponce(path);
+            compiledInstance = await CompileWasmModule(promise, imports);
         } catch (ex) {
             console.error(ex.toString());
             throw ex;
@@ -244,24 +234,24 @@ async function CompileWasmModuleArrayBuffer(arrayBuffer, imports) {
  * @returns {Promise<void>}
  * */
 async function PreRun() {
-    const mono_wasm_add_assembly = Module.cwrap('mono_wasm_add_assembly', null, ['string', 'number', 'number',]);
-    MONO.loaded_files = [];
+    const mono_wasm_add_assembly = globalThis.Module.cwrap('mono_wasm_add_assembly', null, ['string', 'number', 'number',]);
+    globalThis.MONO.loaded_files = [];
 
     dotnetAssemblies.forEach(async (fileName) => {
         const runDependencyId = `blazor:${fileName}`;
-        addRunDependency(runDependencyId); //necessary for await
+        globalThis.addRunDependency(runDependencyId); //necessary for await
 
-        const data = await FetchResource(fileName);
+        const data = await resourceLoader.FetchResourceArray(BuildFrameworkPath(fileName));
         if (data == null) {
-            removeRunDependency(runDependencyId);
+            globalThis.removeRunDependency(runDependencyId);
             console.error("failed to fetch:" + fileName);
         } else {
-            const heapAddress = Module._malloc(data.length);
-            const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, data.length);
+            const heapAddress = globalThis.Module._malloc(data.length);
+            const heapMemory = new Uint8Array(globalThis.Module.HEAPU8.buffer, heapAddress, data.length);
             heapMemory.set(data);
             mono_wasm_add_assembly(fileName, heapAddress, data.length);
-            MONO.loaded_files.push(fileName);
-            removeRunDependency(runDependencyId);
+            globalThis.MONO.loaded_files.push(fileName);
+            globalThis.removeRunDependency(runDependencyId);
         }
     });
 
@@ -277,14 +267,14 @@ let useInvariantCulture = false;
  * @returns {void}
  * */
 function PostRun() {
-    MONO.mono_wasm_setenv("MONO_URI_DOTNETRELATIVEORABSOLUTE", "true");
+    globalThis.MONO.mono_wasm_setenv("MONO_URI_DOTNETRELATIVEORABSOLUTE", "true");
     if (!useInvariantCulture) {
-        MONO.mono_wasm_setenv('LANG', `${dotnetCulture}.UTF-8`);
+        globalThis.MONO.mono_wasm_setenv('LANG', `${dotnetCulture}.UTF-8`);
     }
-    MONO.mono_wasm_setenv("TZ", timeZoneString);
-    MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY", "1");
-    _mono_wasm_load_runtime(appBinDirName, 0);
-    MONO.mono_wasm_runtime_is_ready = true;
+    globalThis.MONO.mono_wasm_setenv("TZ", timeZoneString);
+    globalThis.MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY", "1");
+    globalThis._mono_wasm_load_runtime(appBinDirName, 0);
+    globalThis.MONO.mono_wasm_runtime_is_ready = true;
     InitializeMessagingService();
     postMessage({ t: "Init" }, null, null);
 }
@@ -329,6 +319,7 @@ function PostRun() {
  * @property {string} name
  * @property {string} url
  * @property {Promise<Response>} response
+ * */
 
 // #endregion
 
@@ -337,21 +328,21 @@ function PostRun() {
 /**
  * Builds path to fetch.
  * @private
- * @param {string} name fileName which you want to fetch.
+ * @param {string} fileName file name which you want to fetch.
  * @returns {string} relative path to file.
  */
-function BuildFrameworkPath(name) {
-    return jsExecutePath + "/" + frameworkDirName + "/" + name;
+function BuildFrameworkPath(fileName) {
+    return jsExecutePath + "/" + frameworkDirName + "/" + fileName;
 }
 
 /**
  * Builds path to fetch.
  * @private
- * @param {string} name fileName which you want to fetch.
+ * @param {string} fileName file name which you want to fetch.
  * @returns {string} relative path to file.
  */
-function BuildPath(name) {
-    return jsExecutePath + "/" + name;
+function BuildPath(fileName) {
+    return jsExecutePath + "/" + fileName;
 }
 
 /**
@@ -360,21 +351,21 @@ function BuildPath(name) {
  * @returns {Promise<void>}
  */
 async function LoadICUData(culture) {
-    const icuFileName = Module.mono_wasm_get_icudt_name(culture);
-    addRunDependency(`blazor:icudata`);
-    const icuData = await FetchResource(icuFileName);
+    const icuFileName = globalThis.Module.mono_wasm_get_icudt_name(culture);
+    globalThis.addRunDependency(`blazor:icudata`);
+    const icuData = await resourceLoader.FetchResourceArray(icuFileName);
     if (icuData == null) {
-        removeRunDependency(`blazor:icudata`);
+        globalThis.removeRunDependency(`blazor:icudata`);
         useInvariantCulture = true;
-        MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
+        globalThis.MONO.mono_wasm_setenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1");
         console.warn("Failed to fetch icu data. Fall back to use invariant culture.");
     } else {
-        const heapAddress = Module._malloc(icuData.length);
-        const heapMemory = new Uint8Array(Module.HEAPU8.buffer, heapAddress, icuData.length);
+        const heapAddress = globalThis.Module._malloc(icuData.length);
+        const heapMemory = new Uint8Array(globalThis.Module.HEAPU8.buffer, heapAddress, icuData.length);
         heapMemory.set(icuData);
-        _mono_wasm_load_icu_data(heapAddress);
-        MONO.loaded_files.push(icuFileName);
-        removeRunDependency(`blazor:icudata`);
+        globalThis._mono_wasm_load_icu_data(heapAddress);
+        globalThis.MONO.loaded_files.push(icuFileName);
+        globalThis.removeRunDependency(`blazor:icudata`);
     }
 }
 
@@ -386,122 +377,20 @@ async function LoadICUData(culture) {
 // See MonoPlatform.cs line 543
 async function LoadTimezone(name) {
     const runDependencyId = `blazor:timezonedata`;
-    addRunDependency(runDependencyId);
+    globalThis.addRunDependency(runDependencyId);
 
-    const data = await FetchResource(name);
+    const data = await resourceLoader.FetchResourceArray(name);
 
-    Module['FS_createPath']('/', 'usr', true, true);
-    Module['FS_createPath']('/usr/', 'share', true, true);
-    Module['FS_createPath']('/usr/share/', 'zoneinfo', true, true);
-    MONO.mono_wasm_load_data_archive(data, '/usr/share/zoneinfo/');
+    globalThis.Module['FS_createPath']('/', 'usr', true, true);
+    globalThis.Module['FS_createPath']('/usr/', 'share', true, true);
+    globalThis.Module['FS_createPath']('/usr/share/', 'zoneinfo', true, true);
+    globalThis.MONO.mono_wasm_load_data_archive(data, '/usr/share/zoneinfo/');
 
-    removeRunDependency(runDependencyId);
-}
-
-/** @type Cache */
-let resourceCache;
-
-/** @type readonly Request[] */
-let resourceCacheKeys;
-
-/**
- * Fetch resource by configured way.
- * @param {string} fileName
- * @returns {Promise<Uint8Array | Int8Array>}
- */
-async function FetchResource(fileName) {
-    if (!cacheInitializeTryed) {
-        await InitializeCache();
-    }
-    if (cacheAvailable) {
-        const cacheResponce = await SearchCache(fileName);
-        if (cacheResponce != null) {
-            return new Uint8Array(await cacheResponce.arrayBuffer());
-        }
-    }
-
-    /** @type Response */
-    let responce;
-
-    if (resourceDecoderPath != null) {
-        responce = await fetch(BuildFrameworkPath(fileName) + resourceSuffix);
-    } else {
-        responce = await fetch(BuildFrameworkPath(fileName));
-    }
-    if (responce.ok) {
-        const arrayBuffer = await responce.arrayBuffer();
-
-        if (resourceDecoderPath != null) {
-            /** @type function */
-            const func = globalThis[resourceDecodeMathodName]();
-            return func.call(null, new Int8Array(arrayBuffer));
-        } else {
-            return new Uint8Array(arrayBuffer);
-        }
-    } else {
-        if (resourceDecoderPath != null) {
-            console.warn("failed to fetch encoded resource. Fall back to fetch not encoded.");
-            responce = await fetch(BuildFrameworkPath(fileName));
-            if (responce.ok) {
-                return new Uint8Array(await responce.arrayBuffer());
-            }
-        }
-    }
-    return null;
-}
-
-let cacheAvailable = false;
-let cacheInitializeTryed = false;
-
-/**
- * Initialize cache system
- * @returns {Promise<void>}
- * */
-async function InitializeCache() {
-    cacheInitializeTryed = true;
-
-    if (useCache) {
-        if (resourceCache == null) {
-            const keys = await caches.keys();
-            for (let i = 0; i < keys.length; i++) {
-                if (keys[i] === cacheName) {
-                    resourceCache = await caches.open(keys[i]);
-                    break;
-                }
-            }
-            if (resourceCache == null) {
-                return;
-            }
-        }
-        if (resourceCacheKeys == null) {
-            resourceCacheKeys = await resourceCache.keys();
-            if (resourceCacheKeys == null || resourceCacheKeys.length == 0) {
-                return;
-            } else {
-                cacheAvailable = true;
-                return;
-            }
-        }
-    }
-}
-
-/**
- * Search resource from resource cache. If cache is not hit, returns null.
- * @param {string} fileName filename to serach.
- * @returns {Promise<Response>}
- */
-async function SearchCache(fileName) {
-    let key;
-    for (let i = 0; i < resourceCacheKeys.length; i++) {
-        if (resourceCacheKeys[i].url.includes(fileName)) {
-            key = resourceCacheKeys[i];
-        }
-    }
-    //TODO: should I check the integrity of cache?
-    return await resourceCache.match(key);
+    globalThis.removeRunDependency(runDependencyId);
 }
 
 // #region Messaging
+/** @type Interop */
 let interop;
 
 /**

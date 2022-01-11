@@ -1,4 +1,5 @@
-self.importScripts("./_content/WebResource/SyncWorkerService.js");
+self.importScripts("./_content/WebResource/SyncWorkerService.js", "./_content/WebResource/ResourceLoader.js", "workerDecode.min.js");
+
 self.importScripts("./service-worker-assets.js");
 self.addEventListener("install", event => event.waitUntil(OnInstall(event)));
 self.addEventListener("activate", event => event.waitUntil(OnActivate(event)));
@@ -37,10 +38,18 @@ async function OnActivate(event) {
         .map(key => caches.delete(key)));
 }
 
+const cacheName = "blazor-resources-/BlazorTask/";
+const resourceSuffix = ".br";
+const resourceDecoderMethodName = "BrotliDecode";
+let loader;
+
 async function OnFetch(event) {
+    if (loader === undefined) {
+        loader = new Loader(true, cacheName, true, resourceSuffix, resourceDecoderMethodName);
+    }
     if (IsSpecial(event.request)) {
         let response = await GetSpecialResponse(event.request);
         return response;
     }
-    return await fetch(event.request);
-}/* Manifest version: iYYwxcBY */
+    return await loader.FetchResourceResponce(event.request);
+}/* Manifest version: g71AKVAq */

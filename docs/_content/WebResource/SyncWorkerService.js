@@ -34,7 +34,7 @@ async function GetSpecialResponse(request) {
 }
 
 /** @type Map<number,ArrayBuffer> */
-const responceTable = new Map();
+const responseTable = new Map();
 const waitUnit = 200;
 
 /**
@@ -44,9 +44,9 @@ const waitUnit = 200;
 async function GetMessage(id, timeout) {
     const count = timeout == -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
     for (let i = 0; i < count; i++) {
-        if (responceTable.has(id)) {
-            const value = responceTable.get(id);
-            responceTable.delete(id);
+        if (responseTable.has(id)) {
+            const value = responseTable.get(id);
+            responseTable.delete(id);
             return value;
         }
         await Delay(waitUnit);
@@ -63,7 +63,7 @@ function OnMessage(message) {
     const buffer = message.data.d[0];
     const array = new Int32Array(buffer, 0, 2);
     const id = array[1];
-    responceTable.set(id, buffer);
+    responseTable.set(id, buffer);
 }
 
 /**

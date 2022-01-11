@@ -84,12 +84,12 @@
             const progressBar = document.getElementById("ProgressBar");
             window.fetch = function (input, init) {
                 loadQueueCount++;
-                return _fetch(input, init).then(function (responce) {
+                return _fetch(input, init).then(function (response) {
                     loaded++;
-                    const fileName = responce.url.match(".+/(.+?)([\?#;].*)?$")[1];
+                    const fileName = response.url.match(".+/(.+?)([\?#;].*)?$")[1];
                     progressText.textContent = "'" + fileName + "' を読み込んでいます...(" + loaded + "/" + loadQueueCount + ")";
                     progressBar.style.width = Math.round(loaded * 100 / loadQueueCount) + "%";
-                    return responce;
+                    return response;
                 });
             }
         })();
