@@ -209,7 +209,10 @@ class Loader {
      * @private
      */
     GetFileName(url) {
-        var filename_ex = url.substring(url.lastIndexOf("/")); 
+        let filename_ex = url.substring(url.lastIndexOf("/"));
+        if (filename_ex === "") {
+            filename_ex = "index.html";
+        }
         return filename_ex;
     }
 }

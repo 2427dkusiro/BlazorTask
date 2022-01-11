@@ -46,12 +46,14 @@ const resourceDecoderMethodName = "BrotliDecode";
 let loader;
 
 async function OnFetch(event) {
+    /** @type Request */
+    const request = event.request;
     if (loader === undefined) {
         loader = new Loader(true, blazorCacheName, true, resourceSuffix, resourceDecoderMethodName);
     }
     if (IsSpecial(event.request)) {
-        let response = await GetSpecialResponse(event.request);
+        let response = await GetSpecialResponse(request);
         return response;
     }
-    return await loader.FetchResourceResponce(event.request);
-}
+    return await loader.FetchResourceResponce(request.url);
+}/* Manifest version: FbRSGnaj */

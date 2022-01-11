@@ -17,6 +17,10 @@ function IsSpecial(request) {
     }
 }
 
+/**
+ * Get service worker rewrited response.
+ * @param {Request} request
+ */
 async function GetSpecialResponse(request) {
     let url = new URL(request.url);
     const action = url.searchParams.get("action");

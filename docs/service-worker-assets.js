@@ -901,11 +901,11 @@
       "url": "_content\/WebResource\/Dummy.txt"
     },
     {
-      "hash": "sha256-YGLTS1q4fJYtH\/mxQBTgoQY5VzsTEzyDQbQ8j02sFhk=",
+      "hash": "sha256-zrmQ7u8Z6fWGjHmMydDBshMVmM72Pwa7LV3hUBcOUJw=",
       "url": "_content\/WebResource\/ResourceLoader.js"
     },
     {
-      "hash": "sha256-HS9lYpJwszzFvri0l0v\/rHGy80AW9TpN4HDCdatBvU4=",
+      "hash": "sha256-vC1KfIhKFGoT4LqltSkcsm0WSG8KSw5g0\/wMrl2+RUs=",
       "url": "_content\/WebResource\/SyncWorkerService.js"
     },
     {
@@ -925,5 +925,5 @@
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "g71AKVAq"
+  "version": "FbRSGnaj"
 };
