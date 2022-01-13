@@ -85,7 +85,8 @@ class Loader {
 
         const encoded = await this.FetchFromEncoded(filePath);
         if (encoded != null) {
-            return new Response(encoded.buffer, { status: 200 });
+            const type = this.GetMIMEType(this.GetFileName(filePath));
+            return new Response(encoded.buffer, { status: 200, headers: { "content-type": type } });
         }
 
         const base = await this.Fetch(filePath);
@@ -122,6 +123,9 @@ class Loader {
      */
     async FetchFromEncoded(filePath) {
         if (!this.UseResourceDecoder) {
+            return null;
+        }
+        if (!filePath.includes("/_framework/")) {
             return null;
         }
         const response = await fetch(filePath + this.ResourceSuffix);
@@ -214,5 +218,29 @@ class Loader {
             filename_ex = "index.html";
         }
         return filename_ex;
+    }
+
+    GetMIMEType(fileName) {
+        if (fileName.endsWith(".dll") || fileName.endsWith(".pdb")) {
+            return "application/octet-stream";
+        }
+        if (fileName.endsWith(".wasm")) {
+            return "application/wasm";
+        }
+        if (fileName.endsWith(".html")) {
+            return "text/html";
+        }
+        if (fileName.endsWith(".js")) {
+            return "text/javascript";
+        }
+        if (fileName.endsWith(".json")) {
+            return "application/json";
+        }
+        if (fileName.endsWith(".css")) {
+            return "text/css";
+        }
+        if (fileName.endsWith(".woff")) {
+            return "font/woff";
+        }
     }
 }

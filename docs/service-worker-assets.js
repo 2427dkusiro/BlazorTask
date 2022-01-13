@@ -901,7 +901,7 @@
       "url": "_content\/WebResource\/Dummy.txt"
     },
     {
-      "hash": "sha256-Ekq4rHdsdnVMxCLw1dl0DVlZqR5ILbaFFEn+ulQIPH8=",
+      "hash": "sha256-8JKdhiAPr5AxgotgCBvnOpEUdHxsd2akEimgSDsRwaU=",
       "url": "_content\/WebResource\/ResourceLoader.js"
     },
     {
@@ -925,5 +925,5 @@
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "iBOqDyEU"
+  "version": "C902bP3\/"
 };
