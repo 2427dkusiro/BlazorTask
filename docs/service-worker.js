@@ -35,10 +35,10 @@ async function OnInstall(event) {
 
     for (let i = 0; i < assets.length; i++) {
         const asset = assets[i];
-        if (!offlineAssetsInclude.includes(asset.url)) {
+        if (!offlineAssetsInclude.some(x => x.test(asset.url))) {
             continue;
         }
-        if (offlineAssetsExclude.includes(asset.url)) {
+        if (offlineAssetsExclude.some(x => x.test(asset.url))) {
             continue;
         }
         const request = new Request(asset.url, { integrity: asset.hash, cache: "no-cache" });
