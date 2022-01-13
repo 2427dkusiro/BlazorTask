@@ -901,7 +901,7 @@
       "url": "_content\/WebResource\/Dummy.txt"
     },
     {
-      "hash": "sha256-zrmQ7u8Z6fWGjHmMydDBshMVmM72Pwa7LV3hUBcOUJw=",
+      "hash": "sha256-Ekq4rHdsdnVMxCLw1dl0DVlZqR5ILbaFFEn+ulQIPH8=",
       "url": "_content\/WebResource\/ResourceLoader.js"
     },
     {
@@ -921,9 +921,9 @@
       "url": "_content\/WebResource\/WorkerParent.js"
     },
     {
-      "hash": "sha256-bjLf0SSFCWSlDH1onT2CKJpzOzlnBXsvTSaEb91pHwg=",
+      "hash": "sha256-iqhaGzQ6gB33pG1nXgacKn1Lg1DswRxVSPvSPelJRHQ=",
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "FbRSGnaj"
+  "version": "iBOqDyEU"
 };

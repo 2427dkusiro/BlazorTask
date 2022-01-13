@@ -332,7 +332,8 @@ function PostRun() {
  * @returns {string} relative path to file.
  */
 function BuildFrameworkPath(fileName) {
-    return jsExecutePath + "/" + frameworkDirName + "/" + fileName;
+    const url = new URL("./" + frameworkDirName + "/" + fileName, basePath);
+    return url.toString();
 }
 
 /**
@@ -353,7 +354,7 @@ function BuildPath(fileName) {
 async function LoadICUData(culture) {
     const icuFileName = globalThis.Module.mono_wasm_get_icudt_name(culture);
     globalThis.addRunDependency(`blazor:icudata`);
-    const icuData = await resourceLoader.FetchResourceArray(icuFileName);
+    const icuData = await resourceLoader.FetchResourceArray(BuildFrameworkPath(icuFileName));
     if (icuData == null) {
         globalThis.removeRunDependency(`blazor:icudata`);
         useInvariantCulture = true;
@@ -379,7 +380,7 @@ async function LoadTimezone(name) {
     const runDependencyId = `blazor:timezonedata`;
     globalThis.addRunDependency(runDependencyId);
 
-    const data = await resourceLoader.FetchResourceArray(name);
+    const data = await resourceLoader.FetchResourceArray(BuildFrameworkPath(name));
 
     globalThis.Module['FS_createPath']('/', 'usr', true, true);
     globalThis.Module['FS_createPath']('/usr/', 'share', true, true);

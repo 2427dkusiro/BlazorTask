@@ -194,7 +194,7 @@ class Loader {
     async SearchCache(filePath) {
         let key;
         for (let i = 0; i < this.ResourceCacheKeys.length; i++) {
-            if (this.ResourceCacheKeys[i].url.includes(this.GetFileName(filePath))) {
+            if (this.ResourceCacheKeys[i].url.startsWith(filePath + ".sha256-")) {
                 key = this.ResourceCacheKeys[i];
             }
         }

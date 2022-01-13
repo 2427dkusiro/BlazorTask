@@ -9,23 +9,53 @@ self.addEventListener("fetch", event => event.respondWith(OnFetch(event)));
 self.addEventListener("message", event => OnMessage(event));
 
 const cacheNamePrefix = "offline-cache-";
-const cacheName = "${cacheNamePrefix}${self.assetsManifest.version}";
+const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.ico$/];
 const offlineAssetsExclude = [/^service-worker\.js$/];
 
+const blazorCacheName = "blazor-resources-/BlazorTask/";
+const resourceSuffix = ".br";
+const resourceDecoderMethodName = "BrotliDecode";
+let loader;
+
 async function OnInstall(event) {
     console.info("Service worker: Install");
+    if (loader === undefined) {
+        loader = new Loader(true, blazorCacheName, true, resourceSuffix, resourceDecoderMethodName);
+    }
 
     // Instantly apply service worker change
     event.waitUntil(self.skipWaiting());
 
+    const cacheStore = await caches.open(cacheName);
+    /** @type Array */
+    const assets = self.assetsManifest.assets;
+    /** @type Promise<void>[] */
+    const promises = Array(assets.length);
+
+    for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        if (!offlineAssetsInclude.includes(asset.url)) {
+            continue;
+        }
+        if (offlineAssetsExclude.includes(asset.url)) {
+            continue;
+        }
+        const request = new Request(asset.url, { integrity: asset.hash, cache: "no-cache" });
+        const response = loader.FetchResourceResponce(asset.url);
+        promises[i] = cacheStore.put(request, response);
+    }
+    await Promise.all(promises);
+
     // Fetch and cache all matching items from the assets manifest
+    /*
     const assetsRequests = self.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
 
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
+    */
 }
 
 async function OnActivate(event) {
@@ -40,20 +70,18 @@ async function OnActivate(event) {
         .map(key => caches.delete(key)));
 }
 
-const blazorCacheName = "blazor-resources-/BlazorTask/";
-const resourceSuffix = ".br";
-const resourceDecoderMethodName = "BrotliDecode";
-let loader;
+
 
 async function OnFetch(event) {
-    /** @type Request */
-    const request = event.request;
     if (loader === undefined) {
         loader = new Loader(true, blazorCacheName, true, resourceSuffix, resourceDecoderMethodName);
     }
+
+    /** @type Request */
+    const request = event.request;
     if (IsSpecial(event.request)) {
         let response = await GetSpecialResponse(request);
         return response;
     }
     return await loader.FetchResourceResponce(request.url);
-}/* Manifest version: FbRSGnaj */
+}/* Manifest version: iBOqDyEU */
