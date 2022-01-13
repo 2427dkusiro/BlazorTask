@@ -42,8 +42,9 @@ async function OnInstall(event) {
             continue;
         }
         const request = new Request(asset.url, { integrity: asset.hash, cache: "no-cache" });
+        /** @type Promise<Response> */
         const response = loader.FetchResourceResponce(asset.url);
-        promises[i] = cacheStore.put(request, response);
+        promises[i] = PutCache(cacheStore, request, response);
     }
     await Promise.all(promises);
 
@@ -56,6 +57,17 @@ async function OnInstall(event) {
 
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
     */
+}
+
+/**
+ * 
+ * @param {Cache} store
+ * @param {Request} request
+ * @param {Promise<Response>} promise
+ */
+async function PutCache(store, request, promise) {
+    const response = await promise;
+    await store.put(request, response);
 }
 
 async function OnActivate(event) {
