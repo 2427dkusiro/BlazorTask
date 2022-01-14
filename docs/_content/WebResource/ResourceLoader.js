@@ -125,7 +125,7 @@ class Loader {
         if (!this.UseResourceDecoder) {
             return null;
         }
-        if (!filePath.includes("/_framework/")) {
+        if (!filePath.includes("_framework/")) {
             return null;
         }
         const response = await fetch(filePath + this.ResourceSuffix);
