@@ -28,35 +28,50 @@ async function GetSpecialResponse(request) {
     if (action === "GetResult") {
         const id = url.searchParams.get("id");
         const value = await GetMessage(parseInt(id), 30000);
-        const response = new Response(value, { status: 200 });
+        const response = new Response(value, { status: 200, headers: { "content-type": "application/octet-stream" } });
         return response;
     }
     if (action === "GetId") {
         const newId = callerId === 255 ? 1 : callerId++;
-        const response = new Response((newId).toString(), { status: 200, headers: { "content-type": "application/octet-stream" } });
+        const response = new Response(newId.toString(), { status: 200, headers: { "content-type": "text/plain" } });
         return response;
     }
 }
 
 /** @type Map<number,ArrayBuffer> */
 const responseTable = new Map();
-const waitUnit = 100;
+
+let waitTimeNow = 1;
+const waitTimeMax = 128;
+const timeOut = 60000;
 
 /**
  * @param {number} id
  * @param {number} timeout
  */
 async function GetMessage(id, timeout) {
-    const count = timeout === -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
-    for (let i = 0; i < count; i++) {
+    let waited = 0;
+    while (true) {
         if (responseTable.has(id)) {
             const value = responseTable.get(id);
             responseTable.delete(id);
             return value;
         }
-        await Delay(waitUnit);
+        if (waitTimeNow < waitTimeMax) {
+            const prev = waitTimeNow;
+            waitTimeNow *= 2;
+            const time = waitTimeNow - prev
+            await Delay(time);
+            waited += time;
+        } else {
+            await Delay(waitTimeNow);
+            waited += waitTimeNow;
+        }
+        if (waited > timeOut) {
+            console.warn("Sync call result was not set in specifid time-out length.");
+            return null;
+        }
     }
-    return null;
 }
 
 /**
