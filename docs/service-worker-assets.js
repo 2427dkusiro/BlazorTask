@@ -905,7 +905,7 @@
       "url": "_content\/WebResource\/ResourceLoader.js"
     },
     {
-      "hash": "sha256-nLjYK9LnZ7yR4Z2+xS3w8JpOTs2XnF4zsIsVAcLGieg=",
+      "hash": "sha256-Yf62vBXPhmjgTIj4PAvz5I5DwQVeIm7S1Y8SqPra8c8=",
       "url": "_content\/WebResource\/SyncWorkerService.js"
     },
     {
@@ -925,5 +925,5 @@
       "url": "_content\/WebResource\/WorkerScript.js"
     }
   ],
-  "version": "EBMpu1ow"
+  "version": "1a2NuFfu"
 };

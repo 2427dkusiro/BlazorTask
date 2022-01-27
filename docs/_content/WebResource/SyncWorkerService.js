@@ -33,7 +33,8 @@ async function GetSpecialResponse(request) {
     }
     if (action === "GetId") {
         const newId = callerId === 255 ? 1 : callerId++;
-        const response = new Response((newId).toString(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
+        const header = new Headers();
+        const response = new Response((newId).toString(), { status: 200, headers: { "content-type": "application/octet-stream" } });
         return response;
     }
 }
