@@ -7,7 +7,7 @@ internal class WorkerJSRuntime : IJSRuntime, IJSInProcessRuntime, IJSUnmarshalle
     private static WorkerJSRuntime? _singleton;
 
     // Warn: Getting JSRuntime from static constructor causes runtime crash!!
-    public static WorkerJSRuntime Singleton { get => _singleton ??= new WorkerJSRuntime(); }
+    public static WorkerJSRuntime Singleton => _singleton ??= new WorkerJSRuntime();
     private readonly int self;
 
     public WorkerJSRuntime()

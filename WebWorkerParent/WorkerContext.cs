@@ -9,23 +9,23 @@ namespace BlazorTask;
 public static class WorkerContext
 {
     private static WorkerParent workerParent;
-    public static WorkerParent Parent { get => workerParent ??= new WorkerParent(); }
+    public static WorkerParent Parent => workerParent ??= new WorkerParent();
 
     private static JSRuntime.WorkerJSRuntime workerJSRuntime;
-    public static IJSUnmarshalledRuntime WorkerJSRuntime { get => workerJSRuntime ??= JSRuntime.WorkerJSRuntime.Singleton; }
+    public static IJSUnmarshalledRuntime WorkerJSRuntime => workerJSRuntime ??= JSRuntime.WorkerJSRuntime.Singleton;
 
     private static HttpClient httpClient;
 
-    public static HttpClient HttpClient { get => httpClient ??= new HttpClient(); }
+    public static HttpClient HttpClient => httpClient ??= new HttpClient();
 }
 
 public class WorkerParent : ICallProvider
 {
     private IJSUnmarshalledRuntime? _jSRuntime;
-    private IJSUnmarshalledRuntime JSRuntime { get => _jSRuntime ??= BlazorTask.JSRuntime.WorkerJSRuntime.Singleton; }
+    private IJSUnmarshalledRuntime JSRuntime => _jSRuntime ??= BlazorTask.JSRuntime.WorkerJSRuntime.Singleton;
 
     private MessageHandler? _messageHandler;
-    private MessageHandler MessageHandler { get => _messageHandler ??= MessageHandlerManager.GetHandler(HandlerId.ThisContext); }
+    private MessageHandler MessageHandler => _messageHandler ??= MessageHandlerManager.GetHandler(HandlerId.ThisContext);
 
     public WorkerTask Call(MethodInfo methodInfo, params object?[] args)
     {

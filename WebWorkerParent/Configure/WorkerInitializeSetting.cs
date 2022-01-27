@@ -15,27 +15,24 @@ public record WorkerInitializeSetting
     /// <summary>
     /// Get a singleton which represents default setting. Use with expression to build setting.
     /// </summary>
-    public static WorkerInitializeSetting Default
+    public static WorkerInitializeSetting Default => defaultInstance ??= new WorkerInitializeSetting()
     {
-        get => defaultInstance ??= new WorkerInitializeSetting()
-        {
-            JSExecutePath = "../..",
-            FrameworkDirName = "_framework",
-            AppBinDirName = "appBinDir",
-            DotnetJsName = null,
-            DotnetWasmName = "dotnet.wasm",
-            ResourceDecoderPath = null,
-            ResourceDecodeMathodName = null,
-            ResourceSuffix = null,
-            UseResourceCache = true,
-            DotnetCulture = null,
-            TimeZoneString = null,
-            TimeZoneFileName = "dotnet.timezones.blat",
-            MessageHandlerMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.ReceiveMessage)}",
-            CreateMessageReceiverMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.CreateAtThisContext)}",
-            Assemblies = null,
-        };
-    }
+        JSExecutePath = "../..",
+        FrameworkDirName = "_framework",
+        AppBinDirName = "appBinDir",
+        DotnetJsName = null,
+        DotnetWasmName = "dotnet.wasm",
+        ResourceDecoderPath = null,
+        ResourceDecodeMathodName = null,
+        ResourceSuffix = null,
+        UseResourceCache = true,
+        DotnetCulture = null,
+        TimeZoneString = null,
+        TimeZoneFileName = "dotnet.timezones.blat",
+        MessageHandlerMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.ReceiveMessage)}",
+        CreateMessageReceiverMethodFullName = $"[{messageHandler.Assembly.GetName().Name}]{messageHandler.FullName}:{nameof(Messaging.MessageHandlerManager.CreateAtThisContext)}",
+        Assemblies = null,
+    };
 
     /// <summary>
     /// Get the relative path to app root from javascript file.
@@ -88,6 +85,11 @@ public record WorkerInitializeSetting
     public bool UseResourceCache { get; init; } = true;
 
     /// <summary>
+    /// Get the name of cache.
+    /// </summary>
+    public string? CacheName { get; init; }
+
+    /// <summary>
     /// Get worker runtime's culture. When be <see langword="null"/>, use browser provided culture.
     /// </summary>
     public string? DotnetCulture { get; init; }
@@ -135,7 +137,7 @@ public record WorkerInitializeSetting
         {
             if (ResourceDecodeMathodName is not null || ResourceSuffix is not null)
             {
-                message = $"When you don't use decoder, property '{nameof(ResourceDecodeMathodName)}' and '{nameof(ResourceSuffix)}' must be null";
+                message = $"When you don't use decoder, property '{nameof(ResourceDecodeMathodName)}' and '{nameof(ResourceSuffix)}' must be null.";
                 return false;
             }
         }
@@ -143,9 +145,15 @@ public record WorkerInitializeSetting
         {
             if (string.IsNullOrEmpty(ResourceDecodeMathodName) || string.IsNullOrEmpty(ResourceSuffix))
             {
-                message = $"When you use decoder, property '{nameof(ResourceDecodeMathodName)}' and '{nameof(ResourceSuffix)}' must be not null";
+                message = $"When you use decoder, property '{nameof(ResourceDecodeMathodName)}' and '{nameof(ResourceSuffix)}' must be not null.";
                 return false;
             }
+        }
+
+        if (UseResourceCache && string.IsNullOrEmpty(CacheName))
+        {
+            message = $"When cache is enabled, cache name must be set.";
+            return false;
         }
 
         if (Assemblies is null || Assemblies.Length == 0)

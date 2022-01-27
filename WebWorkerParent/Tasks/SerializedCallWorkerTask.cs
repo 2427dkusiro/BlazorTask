@@ -29,12 +29,13 @@ public sealed class SerializedCallWorkerTask : WorkerTask
         messageHandler.CallSerialized(callHeader, methodName, args, workerId, workerAwaiter);
     }
 
+    private static int sourceId = -1;
     protected override void BlockingInvoke()
     {
         var callId = callHeader.callId;
         CallHeader.CallType option = callHeader.callType;
 
-        var sourceId = messageHandler.GetSyncCallSourceId();
+        sourceId = messageHandler.GetSyncCallSourceId();
 
         if (sourceId == -1)
         {

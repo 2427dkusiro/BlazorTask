@@ -1,7 +1,7 @@
 ﻿// @ts-check
 
 const spPath = "_content/WebResource/Dummy.txt";
-let id = 1;
+let callerId = 1;
 
 /**
  * Return true if passed request is special.
@@ -17,36 +17,63 @@ function IsSpecial(request) {
     }
 }
 
+/**
+ * Get service worker rewrited response.
+ * @param {Request} request
+ * @returns {Promise<Response>} responce
+ */
 async function GetSpecialResponse(request) {
     let url = new URL(request.url);
     const action = url.searchParams.get("action");
-    if (action == "GetResult") {
+    if (action === "GetResult") {
         const id = url.searchParams.get("id");
-        const value = await GetMessage(id, 30000);
-        const response = new Response(value, { status: 200 });
+        const value = await GetMessage(parseInt(id), 30000);
+        const response = new Response(value, { status: 200, headers: { "content-type": "application/octet-stream" } });
         return response;
     }
-    if (action == "GetId") {
-        const response = new Response((id++).toString(), { status: 200 });
+    if (action === "GetId") {
+        const newId = callerId === 255 ? 1 : callerId++;
+        const response = new Response(newId.toString(), { status: 200, headers: { "content-type": "text/plain" } });
         return response;
     }
 }
 
 /** @type Map<number,ArrayBuffer> */
-const responceTable = new Map();
-const waitUnit = 200;
+const responseTable = new Map();
 
+let waitTimeNow;
+const waitTimeDefault = 1;
+const waitTimeMax = 128;
+const timeOut = 60000;
+
+/**
+ * @param {number} id
+ * @param {number} timeout
+ */
 async function GetMessage(id, timeout) {
-    const count = timeout == -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
-    for (let i = 0; i < count; i++) {
-        if (responceTable.has(id)) {
-            const value = responceTable.get(id);
-            responceTable.delete(id);
+    let waited = 0;
+    waitTimeNow = waitTimeDefault;
+    while (true) {
+        if (responseTable.has(id)) {
+            const value = responseTable.get(id);
+            responseTable.delete(id);
             return value;
         }
-        await Delay(waitUnit);
+        if (waitTimeNow < waitTimeMax) {
+            const prev = waitTimeNow;
+            waitTimeNow *= 2;
+            const time = waitTimeNow - prev
+            await Delay(time);
+            waited += time;
+        } else {
+            await Delay(waitTimeNow);
+            waited += waitTimeNow;
+        }
+        if (waited > timeOut) {
+            console.warn("Sync call result was not set in specifid time-out length.");
+            return null;
+        }
     }
-    return null;
 }
 
 /**
@@ -58,7 +85,7 @@ function OnMessage(message) {
     const buffer = message.data.d[0];
     const array = new Int32Array(buffer, 0, 2);
     const id = array[1];
-    responceTable.set(id, buffer);
+    responseTable.set(id, buffer);
 }
 
 /**
