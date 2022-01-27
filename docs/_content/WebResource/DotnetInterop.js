@@ -210,25 +210,6 @@ export class Interop {
         bufferArray_r[0] = 8;
     }
 
-    async AssignSyncCallSourceIdAsync() {
-        const requestUrl = "_content/WebResource/Dummy.txt";
-
-        const url = new URL(requestUrl, this.baseUrl);
-        url.searchParams.set("action", "GetId");
-        const _response = await fetch(url.toString());
-        const response = await _response.text();
-
-        const bufferArray_r = new Int32Array(globalThis.wasmMemory.buffer, this.generalBufferAddr, this.generalBufferLength / 4);
-        bufferArray_r[0] = 0;
-
-        if (response === "6MENWdyDt0p4Qnp9IGYL4OSYj2/Ns9k6uv8yONpN2ph2zNKm+ILRdnvkvl9H7dqFQB+K7aXXDTXo057dUH5vKg") {
-            bufferArray_r[1] = -1;
-        } else {
-            bufferArray_r[1] = parseInt(response);
-        }
-        bufferArray_r[0] = 8;
-    }
-
     /**
      * Wait sync call and set result to buffer.
      * @param {number} id
@@ -236,6 +217,7 @@ export class Interop {
     GetCallSyncResult(id) {
         const requestUrl = "_content/WebResource/Dummy.txt";
         const xhr = new XMLHttpRequest();
+        xhr.responseType = "arraybuffer";
         const url = new URL(requestUrl, this.baseUrl);
         url.searchParams.set("action", "GetResult");
         url.searchParams.set("id", id.toString());
