@@ -20,33 +20,34 @@ function IsSpecial(request) {
 /**
  * Get service worker rewrited response.
  * @param {Request} request
+ * @returns {Promise<Response>} responce
  */
 async function GetSpecialResponse(request) {
     let url = new URL(request.url);
     const action = url.searchParams.get("action");
-    if (action == "GetResult") {
+    if (action === "GetResult") {
         const id = url.searchParams.get("id");
         const value = await GetMessage(parseInt(id), 30000);
         const response = new Response(value, { status: 200 });
         return response;
     }
-    if (action == "GetId") {
-        const newId = callerId == 255 ? 1 : callerId++;
-        const response = new Response((newId).toString(), { status: 200 });
+    if (action === "GetId") {
+        const newId = callerId === 255 ? 1 : callerId++;
+        const response = new Response((newId).toString(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
         return response;
     }
 }
 
 /** @type Map<number,ArrayBuffer> */
 const responseTable = new Map();
-const waitUnit = 200;
+const waitUnit = 100;
 
 /**
  * @param {number} id
  * @param {number} timeout
  */
 async function GetMessage(id, timeout) {
-    const count = timeout == -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
+    const count = timeout === -1 ? Number.MAX_VALUE : timeout / waitUnit + 1;
     for (let i = 0; i < count; i++) {
         if (responseTable.has(id)) {
             const value = responseTable.get(id);
