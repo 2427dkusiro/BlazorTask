@@ -11,7 +11,7 @@ public record JSEnvironmentSetting
     /// <summary>
     /// Get a singleton which represents default setting.
     /// </summary>
-    public static JSEnvironmentSetting Default { get => defaultInstance ??= CreateDefault(); }
+    public static JSEnvironmentSetting Default => defaultInstance ??= CreateDefault();
 
     private static JSEnvironmentSetting CreateDefault()
     {

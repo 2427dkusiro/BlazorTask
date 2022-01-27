@@ -81,5 +81,5 @@ internal static class CallIdManager
     /// <summary>
     /// Get a unique call ID.
     /// </summary>
-    public static int CallId { get => callId++; }
+    public static int CallId => callId++;
 }

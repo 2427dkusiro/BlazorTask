@@ -22,9 +22,17 @@
             WorkerSyncCallback?.Invoke(ans.ToString());
         }
 
+        public static string WriteAnswerSyncHasResult(int ans)
+        {
+            WorkerSyncHasResultCallback?.Invoke(ans.ToString());
+            return $"{ans}!";
+        }
+
         public static Action<string>? WorkerCallback { get; set; }
 
         public static Action<string>? WorkerSyncCallback { get; set; }
+
+        public static Action<string>? WorkerSyncHasResultCallback { get; set; }
 
         public static async Task<int> ReverseCall(int a, int b)
         {
@@ -37,6 +45,17 @@
         {
             var answer = a + b;
             BlazorTask.WorkerContext.Parent.Call(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswerSync))!, answer).Wait();
+            return answer;
+        }
+
+        public static int SyncReverseCallHasResult(int a, int b)
+        {
+            var answer = a + b;
+            var str = BlazorTask.WorkerContext.Parent.Call<string>(typeof(Hoge).GetMethod(nameof(Hoge.WriteAnswerSyncHasResult))!, answer).Result;
+            if (str != $"{answer}!")
+            {
+                throw new InvalidOperationException("assertion failed!!!");
+            }
             return answer;
         }
 

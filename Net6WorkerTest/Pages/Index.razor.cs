@@ -7,7 +7,7 @@ namespace Net6WorkerTest.Pages
     public partial class Index
     {
         private Worker? worker;
-        private string serviceBootTime = "";
+        private readonly string serviceBootTime = "";
         private string workerBootTime = "";
 
         private string methodCallTime = "";

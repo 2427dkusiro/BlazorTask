@@ -130,5 +130,5 @@ public class Worker : IDisposable, ICallProvider
 internal static class WorkerIdCounter
 {
     private static int workerId = 1;
-    public static int WorkerId { get => workerId++; }
+    public static int WorkerId => workerId++;
 }

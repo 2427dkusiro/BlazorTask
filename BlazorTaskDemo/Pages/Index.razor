@@ -66,9 +66,20 @@
 <h3>Call sync method at worker</h3>
 <div>
     <button class="btn btn-primary" @onclick="OnRunSyncVoidClicked">Run</button>
-    <span>@syncMethodCallTime</span>
+    <span>@syncCallTime</span>
     <pre>
         @syncReverseCallString
+    </pre>
+</div>
+
+<hr />
+
+<h3>Call sync method (has result) at worker</h3>
+<div>
+    <button class="btn btn-primary" @onclick="OnRunSyncHasResultClicked">Run</button>
+    <span>@syncCallHasResultTime</span>
+    <pre>
+        @syncCallHasResultString
     </pre>
 </div>
 

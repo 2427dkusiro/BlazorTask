@@ -7,11 +7,12 @@ namespace BlazorTaskDemo.Pages
     public partial class Index
     {
         private Worker? worker;
-        private string serviceBootTime = "";
+        private readonly string serviceBootTime = "";
         private string workerBootTime = "";
 
         private string methodCallTime = "";
-        private string syncMethodCallTime = "";
+        private string syncCallTime = "";
+        private string syncCallHasResultTime = "";
 
         private string? inputNum1;
         private string? inputNum2;
@@ -23,14 +24,14 @@ namespace BlazorTaskDemo.Pages
         private string reverseCallString = "";
         private string syncReverseCallString = "";
 
+        private string syncCallHasResultString = "";
+
         private string exceptionString = "";
 
         private string asyncExceptionString = "";
 
         protected async Task OnBootClick()
         {
-            Console.WriteLine(Http.BaseAddress.AbsolutePath);
-
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
             worker = await workerService.CreateWorkerAsync();
@@ -124,7 +125,30 @@ namespace BlazorTaskDemo.Pages
                 var res = await worker.Call<int>(method, a, b);
                 syncReverseCallString += $"worker returns:{res.ToString()}{Environment.NewLine}";
                 stopwatch.Stop();
-                syncMethodCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
+                syncCallTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
+            }
+        }
+
+        protected async Task OnRunSyncHasResultClicked()
+        {
+            if (worker is null)
+            {
+                return;
+            }
+            System.Reflection.MethodInfo? method = typeof(Hoge).GetMethod(nameof(Hoge.SyncReverseCallHasResult))!;
+
+            Hoge.WorkerSyncHasResultCallback = (string str) =>
+            {
+                syncCallHasResultString += $"worker writen:{str}{Environment.NewLine}";
+                StateHasChanged();
+            };
+            if (int.TryParse(inputNum1, out var a) && int.TryParse(inputNum2, out var b))
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var res = await worker.Call<int>(method, a, b);
+                syncCallHasResultString += $"worker returns:{res.ToString()}{Environment.NewLine}";
+                stopwatch.Stop();
+                syncCallHasResultTime = $"{stopwatch.Elapsed.TotalMilliseconds.ToString("F1")}ms";
             }
         }
 

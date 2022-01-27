@@ -19,7 +19,7 @@ public sealed class WorkerService
 
     private IJSUnmarshalledObjectReference module;
 
-    private Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> configFunc;
+    private readonly Func<WorkerServiceConfigHelper, WorkerServiceConfigHelper> configFunc;
     private WorkerServiceConfig config;
 
     private Messaging.MessageHandler messageHandler;
@@ -48,7 +48,8 @@ public sealed class WorkerService
 
         if (configFunc is not null)
         {
-            var config = new WorkerServiceConfig(JSEnvironmentSetting.Default with { BasePath = httpClient.BaseAddress!.AbsoluteUri }, WorkerInitializeSetting.Default with { BasePath = httpClient.BaseAddress!.AbsoluteUri });
+            var config = new WorkerServiceConfig(JSEnvironmentSetting.Default with { BasePath = httpClient.BaseAddress!.AbsoluteUri },
+                WorkerInitializeSetting.Default with { BasePath = httpClient.BaseAddress!.AbsoluteUri, CacheName = $"blazor-resources-{httpClient.BaseAddress.AbsolutePath}" });
             var helper = new WorkerServiceConfigHelper(httpClient, jSRuntime);
             WorkerServiceConfig result = await configFunc(helper).ApplyAllAsync(config);
             this.config = result;

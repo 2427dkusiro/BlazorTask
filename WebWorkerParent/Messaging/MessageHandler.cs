@@ -105,7 +105,7 @@ public abstract class MessageHandler
     /// <summary>
     /// Get a unique id of received method call request.
     /// </summary>
-    internal int CallReceiveId { get => _callReceiveId++; }
+    internal int CallReceiveId => _callReceiveId++;
 
     private readonly Dictionary<int, (int sourceId, CallHeader header)> headers = new();
 

@@ -17,47 +17,26 @@ internal static class ILMethodBuilder
     private static int methodId = 0;
 
     private static ConstructorInfo? _argumentException_String;
-    private static ConstructorInfo ArgumentException_String
-    {
-        get => _argumentException_String ??= typeof(ArgumentException).GetConstructor(new[] { typeof(string) })
+    private static ConstructorInfo ArgumentException_String => _argumentException_String ??= typeof(ArgumentException).GetConstructor(new[] { typeof(string) })
             ?? throw new InvalidOperationException($"Failed to find '{nameof(ArgumentException)}..ctor'.");
-    }
 
     private static MethodInfo? _deserializeMethod;
-    private static MethodInfo DeserializeMethod
-    {
-        get => _deserializeMethod ??= typeof(System.Text.Json.JsonSerializer).FindMethod(nameof(System.Text.Json.JsonSerializer.Deserialize), new[] { typeof(System.Text.Json.JsonElement), typeof(System.Text.Json.JsonSerializerOptions) });
-    }
+    private static MethodInfo DeserializeMethod => _deserializeMethod ??= typeof(System.Text.Json.JsonSerializer).FindMethod(nameof(System.Text.Json.JsonSerializer.Deserialize), new[] { typeof(System.Text.Json.JsonElement), typeof(System.Text.Json.JsonSerializerOptions) });
 
     private static MethodInfo? _returnVoid;
-    private static MethodInfo ReturnVoid
-    {
-        get => _returnVoid ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnResultVoid));
-    }
+    private static MethodInfo ReturnVoid => _returnVoid ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnResultVoid));
 
     private static MethodInfo? _returnSerialized;
-    private static MethodInfo ReturnSerialized
-    {
-        get => _returnSerialized ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnResultSerialized));
-    }
+    private static MethodInfo ReturnSerialized => _returnSerialized ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnResultSerialized));
 
     private static MethodInfo? _returnException;
-    private static MethodInfo ReturnException
-    {
-        get => _returnException ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnException));
-    }
+    private static MethodInfo ReturnException => _returnException ??= typeof(MessageHandlerManager).FindMethod(nameof(MessageHandlerManager.ReturnException));
 
     private static MethodInfo? _returnAsyncVoid;
-    private static MethodInfo ReturnAsyncVoid
-    {
-        get => _returnAsyncVoid ??= typeof(ILMethodBuilder).FindMethod(nameof(ReturnAsyncVoidHelper));
-    }
+    private static MethodInfo ReturnAsyncVoid => _returnAsyncVoid ??= typeof(ILMethodBuilder).FindMethod(nameof(ReturnAsyncVoidHelper));
 
     private static MethodInfo? _returnAsyncValue;
-    private static MethodInfo ReturnAsyncValue
-    {
-        get => _returnAsyncValue ??= typeof(ILMethodBuilder).FindMethod(nameof(ReturnAsyncValueHelper));
-    }
+    private static MethodInfo ReturnAsyncValue => _returnAsyncValue ??= typeof(ILMethodBuilder).FindMethod(nameof(ReturnAsyncValueHelper));
 
     private static MethodInfo FindMethod(this Type type, string methodName)
     {
