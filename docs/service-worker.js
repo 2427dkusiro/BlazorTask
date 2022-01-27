@@ -86,4 +86,4 @@ async function OnFetch(event) {
         return response;
     }
     return await loader.FetchResourceResponce(request.url);
-}/* Manifest version: 1a2NuFfu */
+}/* Manifest version: oZXU7ByA */
