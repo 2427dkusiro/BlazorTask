@@ -41,7 +41,8 @@ async function GetSpecialResponse(request) {
 /** @type Map<number,ArrayBuffer> */
 const responseTable = new Map();
 
-let waitTimeNow = 1;
+let waitTimeNow;
+const waitTimeDefault = 1;
 const waitTimeMax = 128;
 const timeOut = 60000;
 
@@ -51,6 +52,7 @@ const timeOut = 60000;
  */
 async function GetMessage(id, timeout) {
     let waited = 0;
+    waitTimeNow = waitTimeDefault;
     while (true) {
         if (responseTable.has(id)) {
             const value = responseTable.get(id);
